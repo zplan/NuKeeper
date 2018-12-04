@@ -50,7 +50,7 @@ namespace NuKeeper.AzureDevOps
 
             foreach (var label in labels)
             {
-                await _client.CreatePullRequestLabel(new LabelRequest { name = label }, target.Owner, repo.id, pullRequest.PullRequestId);
+                //await _client.CreatePullRequestLabel(new LabelRequest { name = label }, target.Owner, repo.id, pullRequest.PullRequestId);
             }
         }
 

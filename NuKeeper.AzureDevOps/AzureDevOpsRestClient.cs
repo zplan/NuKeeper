@@ -88,9 +88,18 @@ namespace NuKeeper.AzureDevOps
 
         private static Uri BuildAzureDevOpsUri(string relativePath, bool previewApi = false)
         {
-            return previewApi
-                ? new Uri($"{relativePath}?api-version=4.1-preview.1", UriKind.Relative)
-                : new Uri($"{relativePath}?api-version=4.1", UriKind.Relative);
+            if (!previewApi)
+            {
+                return new Uri($"{relativePath}?api-version=3.2", UriKind.Relative);
+            }
+            else
+            {
+                return new Uri($"{relativePath}?api-version=3.2", UriKind.Relative);
+                ////return previewApi
+                ////        ? new Uri($"{relativePath}?api-version=4.1-preview.1", UriKind.Relative)
+                ////        : new Uri($"{relativePath}?api-version=4.1", UriKind.Relative);
+            }
+
         }
 
         public async Task<IEnumerable<Project>> GetProjects()
