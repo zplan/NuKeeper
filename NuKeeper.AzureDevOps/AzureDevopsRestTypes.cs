@@ -86,7 +86,7 @@ namespace NuKeeper.AzureDevOps
         public string name { get; set; }
         public string url { get; set; }
         public string state { get; set; }
-        public int revision { get; set; }
+        public long revision { get; set; }
         public string visibility { get; set; }
     }
     public class PRRequest
