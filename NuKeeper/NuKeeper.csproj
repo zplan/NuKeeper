@@ -2,14 +2,14 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <PackAsTool>true</PackAsTool>
-    <PackageId>Roche.nukeeper</PackageId>
+    <PackageId>nukeeper.tfs2017</PackageId>
     <ToolCommandName>nukeeper</ToolCommandName>
     <Description>Automagically update nuget packages in .NET projects</Description>
   </PropertyGroup>
   <PropertyGroup>
     <CodeAnalysisRuleSet>..\CodeAnalysisRules.ruleset</CodeAnalysisRuleSet>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>0.10.1</Version>
+    <Version>0.9.3</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
