@@ -50,7 +50,8 @@ namespace NuKeeper.AzureDevOps
 
             foreach (var label in labels)
             {
-                //await _client.CreatePullRequestLabel(new LabelRequest { name = label }, target.Owner, repo.id, pullRequest.PullRequestId);
+                // not supported in TFS 2018 with API 3.2
+                ////await _client.CreatePullRequestLabel(new LabelRequest { name = label }, target.Owner, repo.id, pullRequest.PullRequestId);
             }
         }
 
