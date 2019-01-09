@@ -8,6 +8,7 @@ using NuKeeper.Abstractions.Formats;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.AzureDevOps;
 using NuKeeper.BitBucket;
+using NuKeeper.BitBucketLocal;
 using NuKeeper.GitHub;
 
 namespace NuKeeper.Collaboration
@@ -34,58 +35,89 @@ namespace NuKeeper.Collaboration
             Settings = new CollaborationPlatformSettings();
         }
 
-        public void Initialise(Uri apiEndpoint, string token, ForkMode? forkModeFromSettings)
+        public ValidationResult Initialise(Uri apiEndpoint, string token,
+            ForkMode? forkModeFromSettings, Platform? platformFromSettings)
         {
-            var platformSettingsReader = SettingsReaderForPlatform(apiEndpoint);
-
-            _platform = platformSettingsReader.Platform;
-
-            _nuKeeperLogger.Normal($"Matched uri '{apiEndpoint}' to collaboration platform '{_platform}'");
+            var platformSettingsReader = FindPlatformSettingsReader(platformFromSettings, apiEndpoint);
+            if (platformSettingsReader != null)
+            {
+                _platform = platformSettingsReader.Platform;
+            }
+            else
+            {
+                return ValidationResult.Failure($"Unable to find collaboration platform for uri {apiEndpoint}");
+            }
 
             Settings.BaseApiUrl = UriFormats.EnsureTrailingSlash(apiEndpoint);
             Settings.Token = token;
             Settings.ForkMode = forkModeFromSettings;
             platformSettingsReader.UpdateCollaborationPlatformSettings(Settings);
 
-            ValidateSettings();
-            CreateForPlatform();
-        }
-
-        private ISettingsReader SettingsReaderForPlatform(Uri apiEndpoint)
-        {
-            var platformSettingsReader = _settingReaders
-                .FirstOrDefault(s => s.CanRead(apiEndpoint));
-
-            if (platformSettingsReader == null)
+            var result = ValidateSettings();
+            if (!result.IsSuccess)
             {
-                throw new NuKeeperException($"Unable to find collaboration platform for uri {apiEndpoint}");
+                return result;
             }
 
-            return platformSettingsReader;
+            CreateForPlatform();
+
+            return ValidationResult.Success;
         }
 
-        private void ValidateSettings()
+        private ISettingsReader FindPlatformSettingsReader(
+            Platform? platformFromSettings, Uri apiEndpoint)
+        {
+            if (platformFromSettings.HasValue)
+            {
+                var reader = _settingReaders
+                    .FirstOrDefault(s => s.Platform == platformFromSettings.Value);
+
+                if (reader != null)
+                {
+                    _nuKeeperLogger.Normal($"Collaboration platform specified as '{reader.Platform}'");
+                }
+
+                return reader;
+            }
+            else
+            {
+                var reader = _settingReaders
+                    .FirstOrDefault(s => s.CanRead(apiEndpoint));
+
+                if (reader != null)
+                {
+                    _nuKeeperLogger.Normal($"Matched uri '{apiEndpoint}' to collaboration platform '{reader.Platform}'");
+                }
+
+                return reader;
+            }
+        }
+
+        private ValidationResult ValidateSettings()
         {
             if (!Settings.BaseApiUrl.IsWellFormedOriginalString()
                 || (Settings.BaseApiUrl.Scheme != "http" && Settings.BaseApiUrl.Scheme != "https"))
             {
-                throw new NuKeeperException($"Api is not of correct format {Settings.BaseApiUrl}");
+                return ValidationResult.Failure(
+                    $"Api is not of correct format {Settings.BaseApiUrl}");
             }
 
             if (!Settings.ForkMode.HasValue)
             {
-                throw new NuKeeperException("Fork Mode was not set");
+                return ValidationResult.Failure("Fork Mode was not set");
             }
 
             if (string.IsNullOrWhiteSpace(Settings.Token))
             {
-                throw new NuKeeperException("Token was not set");
+                return ValidationResult.Failure("Token was not set");
             }
 
             if (!_platform.HasValue)
             {
-                throw new NuKeeperException("Platform was not set");
+                return ValidationResult.Failure("Platform was not set");
             }
+
+            return ValidationResult.Success;
         }
 
         private void CreateForPlatform()
@@ -109,6 +141,12 @@ namespace NuKeeper.Collaboration
                 case Platform.Bitbucket:
                     CollaborationPlatform = new BitbucketPlatform(_nuKeeperLogger);
                     RepositoryDiscovery = new BitbucketRepositoryDiscovery(_nuKeeperLogger);
+                    ForkFinder = new BitbucketForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
+                    break;
+
+                case Platform.BitbucketLocal:
+                    CollaborationPlatform = new BitBucketLocalPlatform(_nuKeeperLogger);
+                    RepositoryDiscovery = new BitbucketLocalRepositoryDiscovery(_nuKeeperLogger, CollaborationPlatform, Settings);
                     ForkFinder = new BitbucketForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
                     break;
 

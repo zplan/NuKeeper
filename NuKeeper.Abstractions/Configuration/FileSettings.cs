@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.Output;
 
@@ -14,6 +15,10 @@ namespace NuKeeper.Abstractions.Configuration
         public string Exclude { get; set; }
         public LogLevel? Verbosity { get; set; }
         public VersionChange? Change { get; set; }
+
+        public UsePrerelease? UsePrerelease { get; set; }
+
+        public ForkMode? ForkMode { get; set; }
 
         public string IncludeRepos { get; set; }
         public string ExcludeRepos { get; set; }
@@ -32,6 +37,7 @@ namespace NuKeeper.Abstractions.Configuration
         public string OutputFileName { get; set; }
 
         public LogDestination? LogDestination { get; set; }
+        public Platform? Platform { get; set; }
 
         public static FileSettings Empty()
         {

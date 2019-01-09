@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using NSubstitute;
+using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.Output;
@@ -31,10 +32,14 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.MaxRepo, Is.Null);
             Assert.That(data.Verbosity, Is.Null);
             Assert.That(data.Change, Is.Null);
+            Assert.That(data.ForkMode, Is.Null);
+            Assert.That(data.UsePrerelease, Is.Null);
+
             Assert.That(data.OutputDestination, Is.Null);
             Assert.That(data.OutputFormat, Is.Null);
             Assert.That(data.OutputFileName, Is.Null);
             Assert.That(data.LogDestination, Is.Null);
+            Assert.That(data.Platform, Is.Null);
         }
 
         [Test]
@@ -56,10 +61,14 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.MaxRepo, Is.Null);
             Assert.That(data.Verbosity, Is.Null);
             Assert.That(data.Change, Is.Null);
+            Assert.That(data.ForkMode, Is.Null);
+            Assert.That(data.UsePrerelease, Is.Null);
+
             Assert.That(data.OutputDestination, Is.Null);
             Assert.That(data.OutputFormat, Is.Null);
             Assert.That(data.OutputFileName, Is.Null);
             Assert.That(data.LogDestination, Is.Null);
+            Assert.That(data.Platform, Is.Null);
         }
 
         private const string FullFileData = @"{
@@ -75,10 +84,13 @@ namespace NuKeeper.Abstractions.Tests.Configuration
                ""maxRepo"": 12,
                ""verbosity"": ""Detailed"",
                ""Change"": ""Minor"",
+               ""ForkMode"": ""PreferFork"",
+               ""UsePrerelease"": ""Never"",
                ""OutputFormat"": ""Text"",
                ""OutputDestination"": ""Console"",
                ""OutputFileName"" : ""out_42.txt"",
-               ""LogDestination"" : ""file""
+               ""LogDestination"" : ""file"",
+               ""Platform"" : ""Bitbucket""
 }";
 
         [Test]
@@ -142,12 +154,15 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             var data = fsr.Read(path);
 
             Assert.That(data.Change, Is.EqualTo(VersionChange.Minor));
+            Assert.That(data.ForkMode, Is.EqualTo(ForkMode.PreferFork));
+            Assert.That(data.UsePrerelease, Is.EqualTo(UsePrerelease.Never));
 
             Assert.That(data.Verbosity, Is.EqualTo(LogLevel.Detailed));
             Assert.That(data.LogDestination, Is.EqualTo(LogDestination.File));
 
             Assert.That(data.OutputDestination, Is.EqualTo(OutputDestination.Console));
             Assert.That(data.OutputFormat, Is.EqualTo(OutputFormat.Text));
+            Assert.That(data.Platform, Is.EqualTo(Platform.Bitbucket));
         }
 
         [Test]

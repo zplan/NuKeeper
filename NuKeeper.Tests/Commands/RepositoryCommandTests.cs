@@ -17,14 +17,6 @@ namespace NuKeeper.Tests.Commands
     [TestFixture]
     public class RepositoryCommandTests
     {
-        private static CollaborationFactory GetCollaborationFactory(IEnumerable<ISettingsReader> settingReaders = null)
-        {
-            return new CollaborationFactory(
-                settingReaders ?? new ISettingsReader[] {new GitHubSettingsReader()},
-                Substitute.For<INuKeeperLogger>()
-            );
-        }
-
         [Test]
         public async Task ShouldCallEngineAndNotSucceedWithoutParams()
         {
@@ -71,6 +63,107 @@ namespace NuKeeper.Tests.Commands
             await engine
                 .Received(1)
                 .Run(Arg.Any<SettingsContainer>());
+        }
+
+        [Test]
+        public async Task ShouldInitialiseCollaborationFactory()
+        {
+            var engine = Substitute.For<ICollaborationEngine>();
+            var logger = Substitute.For<IConfigureLogger>();
+            var fileSettings = Substitute.For<IFileSettingsCache>();
+            fileSettings.GetSettings().Returns(FileSettings.Empty());
+
+            var settingReader = new GitHubSettingsReader();
+            var settingsReaders = new List<ISettingsReader> { settingReader };
+            var collaborationFactory = Substitute.For<ICollaborationFactory>();
+            collaborationFactory.Settings.Returns(new CollaborationPlatformSettings());
+
+            var command = new RepositoryCommand(engine, logger, fileSettings, collaborationFactory, settingsReaders)
+            {
+                PersonalAccessToken = "abc",
+                RepositoryUri = "http://github.com/abc/abc",
+                ForkMode = ForkMode.PreferSingleRepository
+            };
+
+            await command.OnExecute();
+
+            collaborationFactory
+                .Received(1)
+                .Initialise(
+                    Arg.Is(new Uri("https://api.github.com")),
+                    Arg.Is("abc"),
+                    Arg.Is<ForkMode?>(ForkMode.PreferSingleRepository),
+                    Arg.Is((Platform?)null));
+        }
+
+        [Test]
+        public async Task ShouldInitialiseForkModeFromFile()
+        {
+            var engine = Substitute.For<ICollaborationEngine>();
+            var logger = Substitute.For<IConfigureLogger>();
+            var fileSettings = Substitute.For<IFileSettingsCache>();
+            fileSettings.GetSettings().Returns(
+                new FileSettings
+                {
+                    ForkMode = ForkMode.PreferFork
+                });
+
+            var settingReader = new GitHubSettingsReader();
+            var settingsReaders = new List<ISettingsReader> { settingReader };
+            var collaborationFactory = Substitute.For<ICollaborationFactory>();
+            collaborationFactory.Settings.Returns(new CollaborationPlatformSettings());
+
+            var command = new RepositoryCommand(engine, logger, fileSettings, collaborationFactory, settingsReaders)
+            {
+                PersonalAccessToken = "abc",
+                RepositoryUri = "http://github.com/abc/abc",
+                ForkMode = null
+            };
+
+            await command.OnExecute();
+
+            collaborationFactory
+                .Received(1)
+                .Initialise(
+                    Arg.Is(new Uri("https://api.github.com")),
+                    Arg.Is("abc"),
+                    Arg.Is<ForkMode?>(ForkMode.PreferFork),
+                    Arg.Is((Platform?)null));
+        }
+
+        [Test]
+        public async Task ShouldInitialisePlatformFromFile()
+        {
+            var engine = Substitute.For<ICollaborationEngine>();
+            var logger = Substitute.For<IConfigureLogger>();
+            var fileSettings = Substitute.For<IFileSettingsCache>();
+            fileSettings.GetSettings().Returns(
+                new FileSettings
+                {
+                    Platform = Platform.BitbucketLocal
+                });
+
+            var settingReader = new GitHubSettingsReader();
+            var settingsReaders = new List<ISettingsReader> { settingReader };
+            var collaborationFactory = Substitute.For<ICollaborationFactory>();
+            collaborationFactory.Settings.Returns(new CollaborationPlatformSettings());
+
+            var command = new RepositoryCommand(engine, logger, fileSettings, collaborationFactory, settingsReaders)
+            {
+                PersonalAccessToken = "abc",
+                RepositoryUri = "http://github.com/abc/abc",
+                ForkMode = null
+            };
+
+            await command.OnExecute();
+
+            collaborationFactory
+                .Received(1)
+                .Initialise(
+                    Arg.Is(new Uri("https://api.github.com")),
+                    Arg.Is("abc"),
+                    Arg.Is((ForkMode?)null),
+                    Arg.Is((Platform?)Platform.BitbucketLocal));
         }
 
         [Test]
@@ -227,7 +320,8 @@ namespace NuKeeper.Tests.Commands
             Assert.That(settings.SourceControlServerSettings.Labels, Does.Not.Contain("testLabel"));
         }
 
-        public static async Task<(SettingsContainer settingsContainer, CollaborationPlatformSettings platformSettings)> CaptureSettings(FileSettings settingsIn,
+        public static async Task<(SettingsContainer settingsContainer, CollaborationPlatformSettings platformSettings)> CaptureSettings(
+            FileSettings settingsIn,
             bool addLabels = false,
             int? maxPr = null)
         {
@@ -257,6 +351,14 @@ namespace NuKeeper.Tests.Commands
             await command.OnExecute();
 
             return (settingsOut, collaborationFactory.Settings);
+        }
+
+        private static ICollaborationFactory GetCollaborationFactory(IEnumerable<ISettingsReader> settingReaders = null)
+        {
+            return new CollaborationFactory(
+                settingReaders ?? new ISettingsReader[] { new GitHubSettingsReader() },
+                Substitute.For<INuKeeperLogger>()
+            );
         }
     }
 }

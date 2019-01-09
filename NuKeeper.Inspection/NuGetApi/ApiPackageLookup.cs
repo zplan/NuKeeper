@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using NuGet.Packaging.Core;
+using NuKeeper.Abstractions;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.NuGet;
 
@@ -17,11 +18,31 @@ namespace NuKeeper.Inspection.NuGetApi
         public async Task<PackageLookupResult> FindVersionUpdate(
             PackageIdentity package,
             NuGetSources sources,
-            VersionChange allowedChange)
+            VersionChange allowedChange,
+            UsePrerelease usePrerelease)
         {
-            var allowBetas = package.Version.IsPrerelease;
-            var foundVersions = await _packageVersionsLookup.Lookup(package.Id, allowBetas, sources);
+            var includePrerelease = ShouldAllowPrerelease(package, usePrerelease);
+
+            var foundVersions = await _packageVersionsLookup.Lookup(package.Id, includePrerelease, sources);
             return VersionChanges.MakeVersions(package.Version, foundVersions, allowedChange);
+        }
+
+        private static bool ShouldAllowPrerelease(PackageIdentity package, UsePrerelease usePrerelease)
+        {
+            switch (usePrerelease)
+            {
+                case UsePrerelease.Always:
+                    return true;
+
+                case UsePrerelease.Never:
+                    return false;
+
+                case UsePrerelease.FromPrerelease:
+                    return package.Version.IsPrerelease;
+
+                default:
+                    throw new NuKeeperException($"Invalid UsePrerelease value: {usePrerelease}");
+            }
         }
     }
 }
