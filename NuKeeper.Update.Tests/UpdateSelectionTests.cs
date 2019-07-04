@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NSubstitute;
 using NuGet.Configuration;
@@ -9,8 +8,8 @@ using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.Logging;
-using NuKeeper.Inspection.NuGetApi;
-using NuKeeper.Inspection.RepositoryInspection;
+using NuKeeper.Abstractions.NuGetApi;
+using NuKeeper.Abstractions.RepositoryInspection;
 using NuKeeper.Update.Selection;
 using NUnit.Framework;
 
@@ -63,77 +62,6 @@ namespace NuKeeper.Update.Tests
         }
 
         [Test]
-        public async Task WhenThereAreIncludes_OnlyConsiderMatches()
-        {
-            var updateSets = new List<PackageUpdateSet>
-            {
-                UpdateFooFromOneVersion(),
-                UpdateBarFromTwoVersions()
-            };
-
-            var settings = new FilterSettings
-            {
-                MaxPackageUpdates = 10,
-                Includes = new Regex("bar")
-            };
-
-            var target = CreateUpdateSelection();
-
-            var results = await target.Filter(updateSets, settings, Pass);
-
-            Assert.That(results.Count, Is.EqualTo(1));
-            Assert.That(results.First().SelectedId, Is.EqualTo("bar"));
-        }
-
-        [Test]
-        public async Task WhenThereAreExcludes_OnlyConsiderNonMatching()
-        {
-            var updateSets = new List<PackageUpdateSet>
-            {
-                UpdateFooFromOneVersion(),
-                UpdateBarFromTwoVersions()
-            };
-
-            var settings = new FilterSettings
-            {
-                MaxPackageUpdates = 10,
-                Excludes = new Regex("bar")
-            };
-
-            var target = CreateUpdateSelection();
-
-            var results = await target.Filter(updateSets, settings, Pass);
-
-            Assert.That(results.Count, Is.EqualTo(1));
-            Assert.That(results.First().SelectedId, Is.EqualTo("foo"));
-        }
-
-        [Test]
-        public async Task WhenThereAreIncludesAndExcludes_OnlyConsiderMatchesButRemoveNonMatching()
-        {
-            var updateSets = new List<PackageUpdateSet>
-            {
-                UpdateFoobarFromOneVersion(),
-                UpdateFooFromOneVersion(),
-                UpdateBarFromTwoVersions()
-            };
-
-            var settings = new FilterSettings 
-            {
-                MaxPackageUpdates = 10,
-                Excludes = new Regex("bar"),
-                Includes = new Regex("foo")
-            };
-
-            var target = CreateUpdateSelection();
-
-            var results = await target.Filter(updateSets, settings, Pass);
-
-            Assert.That(results.Count, Is.EqualTo(1));
-            Assert.That(results.First().SelectedId, Is.EqualTo("foo"));
-        }
-
-        [Test]
         public async Task WhenExistingBranchesAreFilteredOut()
         {
             var updateSets = new List<PackageUpdateSet>
@@ -160,7 +88,7 @@ namespace NuKeeper.Update.Tests
 
             var target = CreateUpdateSelection();
 
-            var results = await target.Filter(updateSets, OneTargetSelection(),FilterToId("bar"));
+            var results = await target.Filter(updateSets, OneTargetSelection(), FilterToId("bar"));
 
             Assert.That(results.Count, Is.EqualTo(1));
             Assert.That(results.First().SelectedId, Is.EqualTo("bar"));
@@ -276,7 +204,7 @@ namespace NuKeeper.Update.Tests
                 new PackageInProject("foobar", "1.0.1", PathToProjectTwo())
             };
 
-            var latest = new PackageSearchMedatadata(newPackage, new PackageSource("http://none"), DateTimeOffset.Now, null);
+            var latest = new PackageSearchMetadata(newPackage, new PackageSource("http://none"), DateTimeOffset.Now, null);
 
             var updates = new PackageLookupResult(VersionChange.Major, latest, null, null);
             return new PackageUpdateSet(updates, currentPackages);
@@ -293,7 +221,7 @@ namespace NuKeeper.Update.Tests
             };
 
             var matchVersion = new NuGetVersion("4.0.0");
-            var match = new PackageSearchMedatadata(new PackageIdentity("foo", matchVersion),
+            var match = new PackageSearchMetadata(new PackageIdentity("foo", matchVersion),
                 new PackageSource("http://none"), pubDate, null);
 
             var updates = new PackageLookupResult(VersionChange.Major, match, null, null);
@@ -311,7 +239,7 @@ namespace NuKeeper.Update.Tests
             };
 
             var matchId = new PackageIdentity("bar", new NuGetVersion("4.0.0"));
-            var match = new PackageSearchMedatadata(matchId, new PackageSource("http://none"), pubDate, null);
+            var match = new PackageSearchMetadata(matchId, new PackageSource("http://none"), pubDate, null);
 
             var updates = new PackageLookupResult(VersionChange.Major, match, null, null);
             return new PackageUpdateSet(updates, currentPackages);

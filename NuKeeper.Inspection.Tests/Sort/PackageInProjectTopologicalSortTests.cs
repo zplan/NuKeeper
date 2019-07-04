@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NSubstitute;
-using NuGet.Packaging.Core;
-using NuGet.Versioning;
 using NuKeeper.Abstractions.Logging;
-using NuKeeper.Inspection.RepositoryInspection;
+using NuKeeper.Abstractions.NuGet;
+using NuKeeper.Abstractions.RepositoryInspection;
 using NuKeeper.Inspection.Sort;
 using NUnit.Framework;
 
@@ -64,7 +63,7 @@ namespace NuKeeper.Inspection.Tests.Sort
 
             AssertIsASortOf(sorted, items);
             logger.Received(1).Detailed("No dependencies between items, no need to sort on dependencies");
-       }
+        }
 
         [Test]
         public void CanSortTwoRelatedItemsinCorrectOrder()
@@ -167,8 +166,9 @@ namespace NuKeeper.Inspection.Tests.Sort
                 refs.Add(refProject.Path.FullName);
             }
 
-            return new PackageInProject(
-                new PackageIdentity(packageId, new NuGetVersion(packageVersion)),
+            var packageVersionRange = PackageVersionRange.Parse(packageId, packageVersion);
+
+            return new PackageInProject(packageVersionRange,
                 new PackagePath(basePath, relativePath, PackageReferenceType.ProjectFile),
                 refs);
         }

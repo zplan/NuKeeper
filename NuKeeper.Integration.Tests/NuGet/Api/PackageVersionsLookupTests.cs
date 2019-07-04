@@ -5,6 +5,7 @@ using NSubstitute;
 using NuGet.Common;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.NuGet;
+using NuKeeper.Abstractions.NuGetApi;
 using NuKeeper.Inspection.NuGetApi;
 using NUnit.Framework;
 
@@ -113,7 +114,7 @@ namespace NuKeeper.Integration.Tests.Nuget.Api
         {
             var lookup = BuildPackageLookup();
 
-            var tasks = new List<Task<IReadOnlyCollection<PackageSearchMedatadata>>>();
+            var tasks = new List<Task<IReadOnlyCollection<PackageSearchMetadata>>>();
 
             for (int i = 0; i < 10; i++)
             {

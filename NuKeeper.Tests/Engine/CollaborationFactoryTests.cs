@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NSubstitute;
 using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.AzureDevOps;
 using NuKeeper.Collaboration;
+using NuKeeper.Engine;
 using NuKeeper.GitHub;
 using NUnit.Framework;
 
@@ -27,7 +29,7 @@ namespace NuKeeper.Tests.Engine
             settingReader2.CanRead(gitHubUri).Returns(true);
             settingReader2.Platform.Returns(Platform.GitHub);
 
-            var readers = new List<ISettingsReader> {settingReader1, settingReader2};
+            var readers = new List<ISettingsReader> { settingReader1, settingReader2 };
             var logger = Substitute.For<INuKeeperLogger>();
             return new CollaborationFactory(readers, logger);
         }
@@ -44,11 +46,11 @@ namespace NuKeeper.Tests.Engine
         }
 
         [Test]
-        public void UnknownApiReturnsUnableToFindPlatform()
+        public async Task UnknownApiReturnsUnableToFindPlatform()
         {
             var collaborationFactory = GetCollaborationFactory();
 
-            var result = collaborationFactory.Initialise(
+            var result = await collaborationFactory.Initialise(
                     new Uri("https://unknown.com/"), null,
                     ForkMode.SingleRepositoryOnly, null);
 
@@ -58,11 +60,11 @@ namespace NuKeeper.Tests.Engine
         }
 
         [Test]
-        public void UnknownApiCanHaveManualPlatform()
+        public async Task UnknownApiCanHaveManualPlatform()
         {
             var collaborationFactory = GetCollaborationFactory();
 
-            var result = collaborationFactory.Initialise(
+            var result = await collaborationFactory.Initialise(
                     new Uri("https://unknown.com/"), "token",
                     ForkMode.SingleRepositoryOnly,
                     Platform.GitHub);
@@ -72,11 +74,11 @@ namespace NuKeeper.Tests.Engine
         }
 
         [Test]
-        public void ManualPlatformWillOverrideUri()
+        public async Task ManualPlatformWillOverrideUri()
         {
             var collaborationFactory = GetCollaborationFactory();
 
-            var result = collaborationFactory.Initialise(
+            var result = await collaborationFactory.Initialise(
                 new Uri("https://api.github.myco.com"), "token",
                 ForkMode.SingleRepositoryOnly,
                 Platform.AzureDevOps);
@@ -86,11 +88,11 @@ namespace NuKeeper.Tests.Engine
         }
 
         [Test]
-        public void AzureDevOpsUrlReturnsAzureDevOps()
+        public async Task AzureDevOpsUrlReturnsAzureDevOps()
         {
             var collaborationFactory = GetCollaborationFactory();
 
-            var result = collaborationFactory.Initialise(new Uri("https://dev.azure.com"), "token",
+            var result = await collaborationFactory.Initialise(new Uri("https://dev.azure.com"), "token",
                 ForkMode.SingleRepositoryOnly, null);
             Assert.That(result.IsSuccess);
 
@@ -99,11 +101,11 @@ namespace NuKeeper.Tests.Engine
         }
 
         [Test]
-        public void GithubUrlReturnsGitHub()
+        public async Task GithubUrlReturnsGitHub()
         {
             var collaborationFactory = GetCollaborationFactory();
 
-            var result = collaborationFactory.Initialise(new Uri("https://api.github.com"), "token",
+            var result = await collaborationFactory.Initialise(new Uri("https://api.github.com"), "token",
                 ForkMode.PreferFork, null);
             Assert.That(result.IsSuccess);
 
@@ -132,6 +134,7 @@ namespace NuKeeper.Tests.Engine
             Assert.IsInstanceOf<GitHubRepositoryDiscovery>(collaborationFactory.RepositoryDiscovery);
             Assert.IsInstanceOf<OctokitClient>(collaborationFactory.CollaborationPlatform);
             Assert.IsInstanceOf<CollaborationPlatformSettings>(collaborationFactory.Settings);
+            Assert.IsInstanceOf<DefaultCommitWorder>(collaborationFactory.CommitWorder);
         }
 
         private static void AssertAzureDevOps(ICollaborationFactory collaborationFactory)
@@ -140,6 +143,7 @@ namespace NuKeeper.Tests.Engine
             Assert.IsInstanceOf<AzureDevOpsRepositoryDiscovery>(collaborationFactory.RepositoryDiscovery);
             Assert.IsInstanceOf<AzureDevOpsPlatform>(collaborationFactory.CollaborationPlatform);
             Assert.IsInstanceOf<CollaborationPlatformSettings>(collaborationFactory.Settings);
+            Assert.IsInstanceOf<AzureDevOpsCommitWorder>(collaborationFactory.CommitWorder);
         }
     }
 }

@@ -21,24 +21,33 @@ namespace NuKeeper.Engine
 
         public async Task<bool> ContainsDotNetProjects(RepositorySettings repository)
         {
-            var request = new SearchCodeRequest("\"packages.config\" OR \".csproj\" OR \".fsproj\" OR \".vbproj\"")
+            const string dotNetCodeFiles = "\"packages.config\" OR \".csproj\" OR \".fsproj\" OR \".vbproj\"";
+
+            var repos = new List<SearchRepo>
             {
-                Repos = new List<(string owner, string name)> { (repository.RepositoryOwner, repository.RepositoryName) },
+                new SearchRepo(repository.RepositoryOwner, repository.RepositoryName)
+            };
+
+            var searchCodeRequest = new SearchCodeRequest(dotNetCodeFiles, repos)
+            {
                 PerPage = 1
             };
+
             try
             {
-                var result = await _collaborationFactory.CollaborationPlatform.Search(request);
+                var result = await _collaborationFactory.CollaborationPlatform.Search(searchCodeRequest);
                 if (result.TotalCount <= 0)
                 {
                     _logger.Detailed(
                         $"Repository {repository.RepositoryOwner}/{repository.RepositoryName} contains no .NET code on the default branch, skipping.");
                     return false;
                 }
-                
+
                 return true;
             }
+#pragma warning disable CA1031
             catch (Exception ex)
+#pragma warning restore CA1031
             {
                 _logger.Detailed("Repository search failed: " + ex);
             }

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using NuGet.Versioning;
-using NuKeeper.Inspection.NuGetApi;
-using NuKeeper.Inspection.RepositoryInspection;
+using NuKeeper.Abstractions.NuGetApi;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Inspection.Report.Formats
 {
@@ -86,7 +86,7 @@ namespace NuKeeper.Inspection.Report.Formats
             _writer.WriteLine($"LibYears: {displayValue}");
         }
 
-        private static PackageSearchMedatadata FilteredPackageVersion(NuGetVersion baseline, PackageSearchMedatadata packageVersion)
+        private static PackageSearchMetadata FilteredPackageVersion(NuGetVersion baseline, PackageSearchMetadata packageVersion)
         {
             if (packageVersion == null)
             {

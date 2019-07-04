@@ -1,15 +1,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.Inspections.Files;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.NuGet;
+using NuKeeper.Abstractions.RepositoryInspection;
 using NuKeeper.Inspection;
 using NuKeeper.Inspection.Files;
 using NuKeeper.Inspection.Report;
-using NuKeeper.Inspection.RepositoryInspection;
 using NuKeeper.Inspection.Sort;
 using NuKeeper.Inspection.Sources;
 
@@ -50,7 +51,9 @@ namespace NuKeeper.Local
                 folder,
                 sources,
                 settings.UserSettings.AllowedChange,
-                settings.UserSettings.UsePrerelease);
+                settings.UserSettings.UsePrerelease,
+                settings.PackageFilters?.Includes,
+                settings.PackageFilters?.Excludes);
 
             Report(settings.UserSettings, sortedUpdates);
 
@@ -64,10 +67,12 @@ namespace NuKeeper.Local
             IFolder folder,
             NuGetSources sources,
             VersionChange allowedChange,
-            UsePrerelease usePrerelease)
+            UsePrerelease usePrerelease,
+            Regex includes,
+            Regex excludes)
         {
             var updates = await _updateFinder.FindPackageUpdateSets(
-                folder, sources, allowedChange, usePrerelease);
+                folder, sources, allowedChange, usePrerelease, includes, excludes);
 
             return _sorter.Sort(updates)
                 .ToList();

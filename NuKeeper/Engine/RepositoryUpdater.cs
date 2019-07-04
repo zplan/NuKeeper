@@ -4,10 +4,10 @@ using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.Git;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.NuGet;
+using NuKeeper.Abstractions.RepositoryInspection;
 using NuKeeper.Engine.Packages;
 using NuKeeper.Inspection;
 using NuKeeper.Inspection.Report;
-using NuKeeper.Inspection.RepositoryInspection;
 using NuKeeper.Inspection.Sources;
 using NuKeeper.Update.Process;
 
@@ -46,15 +46,17 @@ namespace NuKeeper.Engine
             RepositoryData repository,
             SettingsContainer settings)
         {
-            if (string.IsNullOrEmpty(repository.DefaultBranch))
-                GitInit(git, repository);
+            if (!repository.IsLocalRepo)
+            {
+                await GitInit(git, repository);
+            }
 
             var userSettings = settings.UserSettings;
 
             var sources = _nugetSourcesReader.Read(settings.WorkingFolder ?? git.WorkingFolder, userSettings.NuGetSources);
 
             var updates = await _updateFinder.FindPackageUpdateSets(
-                settings.WorkingFolder ?? git.WorkingFolder, sources, userSettings.AllowedChange, userSettings.UsePrerelease);
+                settings.WorkingFolder ?? git.WorkingFolder, sources, userSettings.AllowedChange, userSettings.UsePrerelease, settings.PackageFilters?.Includes, settings.PackageFilters?.Excludes);
 
             _reporter.Report(
                 userSettings.OutputDestination,
@@ -70,7 +72,7 @@ namespace NuKeeper.Engine
             }
 
             var targetUpdates = await _updateSelection.SelectTargets(
-                repository.Push, updates, settings.PackageFilters);
+                repository.Push, updates, settings.PackageFilters, settings.BranchSettings);
 
             return await DoTargetUpdates(git, repository, targetUpdates,
                 sources, settings);
@@ -104,11 +106,11 @@ namespace NuKeeper.Engine
             return updatesDone;
         }
 
-        private static void GitInit(IGitDriver git, RepositoryData repository)
+        private static async Task GitInit(IGitDriver git, RepositoryData repository)
         {
-            git.Clone(repository.Pull.Uri);
-            repository.DefaultBranch = git.GetCurrentHead();
-            git.AddRemote(repository.Remote, repository.Push.Uri);
+            await git.Clone(repository.Pull.Uri, repository.DefaultBranch);
+            repository.DefaultBranch = repository.DefaultBranch ?? await git.GetCurrentHead();
+            await git.AddRemote(repository.Remote, repository.Push.Uri);
         }
     }
 }

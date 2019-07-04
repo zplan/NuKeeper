@@ -8,7 +8,6 @@ using NuKeeper.Engine;
 using NuKeeper.Engine.Packages;
 using NuKeeper.Inspection;
 using NuKeeper.Inspection.Report;
-using NuKeeper.Inspection.RepositoryInspection;
 using NuKeeper.Inspection.Sources;
 using NuKeeper.Update;
 using NuKeeper.Update.Process;
@@ -20,6 +19,7 @@ using System.Threading.Tasks;
 using NuKeeper.Abstractions.CollaborationModels;
 using NuKeeper.Abstractions.Git;
 using NuKeeper.Abstractions.Inspections.Files;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Tests.Engine
 {
@@ -105,7 +105,7 @@ namespace NuKeeper.Tests.Engine
                     Arg.Any<PullRequestRequest>(),
                     Arg.Any<IEnumerable<string>>());
 
-            gitDriver.Received(numberOfUpdates)
+            await gitDriver.Received(numberOfUpdates)
                 .Commit(Arg.Any<string>());
         }
 
@@ -164,7 +164,8 @@ namespace NuKeeper.Tests.Engine
             updateSelection.SelectTargets(
                     Arg.Any<ForkData>(),
                     Arg.Any<IReadOnlyCollection<PackageUpdateSet>>(),
-                    Arg.Any<FilterSettings>())
+                    Arg.Any<FilterSettings>(),
+                    Arg.Any<BranchSettings>())
                 .Returns(c => c.ArgAt<IReadOnlyCollection<PackageUpdateSet>>(1));
         }
 
@@ -173,7 +174,8 @@ namespace NuKeeper.Tests.Engine
             updateSelection.SelectTargets(
                     Arg.Any<ForkData>(),
                     Arg.Any<IReadOnlyCollection<PackageUpdateSet>>(),
-                    Arg.Any<FilterSettings>())
+                    Arg.Any<FilterSettings>(),
+                    Arg.Any<BranchSettings>())
                 .Returns(new List<PackageUpdateSet>());
         }
 
@@ -185,7 +187,8 @@ namespace NuKeeper.Tests.Engine
                 UserSettings = new UserSettings
                 {
                     ConsolidateUpdatesInSinglePullRequest = consolidateUpdates
-                }
+                },
+                BranchSettings = new BranchSettings()
             };
         }
 

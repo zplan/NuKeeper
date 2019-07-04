@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NuGet.Versioning;
-using NuKeeper.Inspection.RepositoryInspection;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Inspection.Sort
 {
@@ -59,7 +59,7 @@ namespace NuKeeper.Inspection.Sort
             long preReleaseScore = 0;
             if (oldVersion.IsPrerelease && !newVersion.IsPrerelease)
             {
-               preReleaseScore = Shift * 12;
+                preReleaseScore = Shift * 12;
             }
 
             var majors = newVersion.Major - oldVersion.Major;

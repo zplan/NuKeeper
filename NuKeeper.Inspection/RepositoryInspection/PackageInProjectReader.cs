@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.NuGet;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Inspection.RepositoryInspection
 {
@@ -30,7 +31,7 @@ namespace NuKeeper.Inspection.RepositoryInspection
                 return null;
             }
 
-            var packageVersionRange = PackageVersionRange.Read(id, version);
+            var packageVersionRange = PackageVersionRange.Parse(id, version);
 
             if (packageVersionRange == null)
             {
@@ -38,7 +39,9 @@ namespace NuKeeper.Inspection.RepositoryInspection
                 return null;
             }
 
-            var singleVersion = packageVersionRange.SingleVersionIdentity();
+            var pip = new PackageInProject(packageVersionRange, path, projectReferences);
+
+            var singleVersion = pip.Identity;
 
             if (singleVersion == null)
             {
@@ -46,7 +49,7 @@ namespace NuKeeper.Inspection.RepositoryInspection
                 return null;
             }
 
-            return new PackageInProject(singleVersion, path, projectReferences);
+            return pip;
         }
     }
 }

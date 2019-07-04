@@ -42,6 +42,7 @@ namespace NuKeeper.Tests.Commands
             Assert.That(settings, Is.Not.Null);
             Assert.That(settings.PackageFilters, Is.Not.Null);
             Assert.That(settings.UserSettings, Is.Not.Null);
+            Assert.That(settings.BranchSettings, Is.Not.Null);
 
             Assert.That(settings.PackageFilters.MinimumAge, Is.EqualTo(TimeSpan.FromDays(7)));
             Assert.That(settings.PackageFilters.Excludes, Is.Null);
@@ -52,6 +53,8 @@ namespace NuKeeper.Tests.Commands
             Assert.That(settings.UserSettings.NuGetSources, Is.Null);
             Assert.That(settings.UserSettings.OutputDestination, Is.EqualTo(OutputDestination.Console));
             Assert.That(settings.UserSettings.OutputFormat, Is.EqualTo(OutputFormat.Text));
+
+            Assert.That(settings.BranchSettings.BranchNamePrefix, Is.Null);
         }
 
         [Test]
@@ -116,8 +119,54 @@ namespace NuKeeper.Tests.Commands
             Assert.That(settings.UserSettings.AllowedChange, Is.EqualTo(VersionChange.Patch));
         }
 
+        [Test]
+        public async Task WillReadMaxPackageUpdatesFromFile()
+        {
+            var fileSettings = new FileSettings
+            {
+                MaxPackageUpdates = 1234
+            };
+
+            var settings = await CaptureSettings(fileSettings);
+
+            Assert.That(settings, Is.Not.Null);
+            Assert.That(settings.PackageFilters, Is.Not.Null);
+            Assert.That(settings.PackageFilters.MaxPackageUpdates, Is.EqualTo(1234));
+        }
+
+        [Test]
+        public async Task WillReadMaxPackageUpdatesFromCommandLineOverFile()
+        {
+            var fileSettings = new FileSettings
+            {
+                MaxPackageUpdates = 123
+            };
+
+            var settings = await CaptureSettings(fileSettings, null, 23456);
+
+            Assert.That(settings, Is.Not.Null);
+            Assert.That(settings.PackageFilters, Is.Not.Null);
+            Assert.That(settings.PackageFilters.MaxPackageUpdates, Is.EqualTo(23456));
+        }
+
+        [Test]
+        public async Task WillReadBranchNamePrefixFromCommandLineOverFile()
+        {
+            var fileSettings = new FileSettings
+            {
+                BranchNamePrefix = "nukeeper/"
+            };
+
+            var settings = await CaptureSettings(fileSettings);
+
+            Assert.That(settings, Is.Not.Null);
+            Assert.That(settings.BranchSettings, Is.Not.Null);
+            Assert.That(settings.BranchSettings.BranchNamePrefix, Is.EqualTo("nukeeper/"));
+        }
+
         public static async Task<SettingsContainer> CaptureSettings(FileSettings settingsIn,
-            VersionChange? change = null)
+            VersionChange? change = null,
+            int? maxPackageUpdates = null)
         {
             var logger = Substitute.For<IConfigureLogger>();
             var fileSettings = Substitute.For<IFileSettingsCache>();
@@ -131,6 +180,7 @@ namespace NuKeeper.Tests.Commands
 
             var command = new UpdateCommand(engine, logger, fileSettings);
             command.AllowedChange = change;
+            command.MaxPackageUpdates = maxPackageUpdates;
 
             await command.OnExecute();
 

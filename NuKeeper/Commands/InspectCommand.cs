@@ -6,7 +6,7 @@ using NuKeeper.Local;
 
 namespace NuKeeper.Commands
 {
-    [Command(Description = "Checks projects existing locally for possible updates.")]
+    [Command("inspect", "i", Description = "Checks projects existing locally for possible updates.")]
     internal class InspectCommand : LocalNuKeeperCommand
     {
         private readonly ILocalEngine _engine;
@@ -17,9 +17,9 @@ namespace NuKeeper.Commands
             _engine = engine;
         }
 
-        protected override ValidationResult PopulateSettings(SettingsContainer settings)
+        protected override async Task<ValidationResult> PopulateSettings(SettingsContainer settings)
         {
-            var baseResult = base.PopulateSettings(settings);
+            var baseResult = await base.PopulateSettings(settings);
             if (!baseResult.IsSuccess)
             {
                 return baseResult;

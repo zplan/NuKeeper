@@ -16,5 +16,8 @@ namespace NuKeeper.Engine
         public ForkData Push { get; }
         public string DefaultBranch { get; set; }
         public string Remote { get; set; }
+        public bool IsLocalRepo { get; set; }
+
+        public bool IsFork => Pull.Owner != Push.Owner;
     }
 }

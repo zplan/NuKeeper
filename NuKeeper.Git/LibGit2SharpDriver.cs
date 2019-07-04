@@ -1,11 +1,14 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using LibGit2Sharp;
 using NuKeeper.Abstractions;
+using NuKeeper.Abstractions.CollaborationModels;
 using NuKeeper.Abstractions.Git;
 using NuKeeper.Abstractions.Inspections.Files;
 using NuKeeper.Abstractions.Logging;
 using GitCommands = LibGit2Sharp.Commands;
+using Repository = LibGit2Sharp.Repository;
 
 namespace NuKeeper.Git
 {
@@ -19,36 +22,46 @@ namespace NuKeeper.Git
         public IFolder WorkingFolder { get; }
 
         public LibGit2SharpDriver(INuKeeperLogger logger,
-            IFolder workingFolder, Credentials gitCredentials, Identity userIdentity)
+            IFolder workingFolder, GitUsernamePasswordCredentials credentials, User user)
         {
             if (workingFolder == null)
             {
                 throw new ArgumentNullException(nameof(workingFolder));
             }
 
-            if (gitCredentials == null)
+            if (credentials == null)
             {
-                throw new ArgumentNullException(nameof(gitCredentials));
+                throw new ArgumentNullException(nameof(credentials));
             }
 
             _logger = logger;
             WorkingFolder = workingFolder;
-            _gitCredentials = gitCredentials;
-            _identity = userIdentity;
+            _gitCredentials = new UsernamePasswordCredentials
+            { Password = credentials.Password, Username = credentials.Username };
+            _identity = GetUserIdentity(user);
         }
-        
-        public void Clone(Uri pullEndpoint)
-        {
-            _logger.Normal($"Git clone {pullEndpoint} to {WorkingFolder.FullPath}");
-          
-            Repository.Clone(pullEndpoint.AbsoluteUri, WorkingFolder.FullPath,
-                new CloneOptions
-                {
-                    CredentialsProvider = UsernamePasswordCredentials,
-                    OnTransferProgress = OnTransferProgress
-                });
 
-            _logger.Detailed("Git clone complete");
+        public async Task Clone(Uri pullEndpoint)
+        {
+            await Clone(pullEndpoint, null);
+        }
+
+        public Task Clone(Uri pullEndpoint, string branchName)
+        {
+            return Task.Run(() =>
+            {
+                _logger.Normal($"Git clone {pullEndpoint}, branch {branchName ?? "default"}, to {WorkingFolder.FullPath}");
+
+                Repository.Clone(pullEndpoint.AbsoluteUri, WorkingFolder.FullPath,
+                    new CloneOptions
+                    {
+                        CredentialsProvider = UsernamePasswordCredentials,
+                        OnTransferProgress = OnTransferProgress,
+                        BranchName = branchName
+                    });
+
+                _logger.Detailed("Git clone complete");
+            });
         }
 
         private bool OnTransferProgress(TransferProgress progress)
@@ -62,37 +75,55 @@ namespace NuKeeper.Git
             return true;
         }
 
-        public void AddRemote(string name, Uri endpoint)
+        public Task AddRemote(string name, Uri endpoint)
         {
-            using (var repo = MakeRepo())
+            return Task.Run(() =>
             {
-                repo.Network.Remotes.Add(name, endpoint.AbsoluteUri);
-            }
+                using (var repo = MakeRepo())
+                {
+                    repo.Network.Remotes.Add(name, endpoint.AbsoluteUri);
+                }
+            });
         }
 
-        public void Checkout(string branchName)
+        public Task Checkout(string branchName)
         {
-            _logger.Detailed($"Git checkout '{branchName}'");
-            using (var repo = MakeRepo())
+            return Task.Run(() =>
             {
-                GitCommands.Checkout(repo, repo.Branches[branchName]);
-            }
+                _logger.Detailed($"Git checkout '{branchName}'");
+                using (var repo = MakeRepo())
+                {
+                    if (BranchExists(branchName))
+                    {
+                        GitCommands.Checkout(repo, repo.Branches[branchName]);
+                    }
+                    else
+                    {
+                        throw new NuKeeperException(
+                            $"Git Cannot checkout branch: the branch named '{branchName}' doesn't exist");
+                    }
+                }
+            });
         }
 
-        public void CheckoutNewBranch(string branchName)
+        public Task CheckoutNewBranch(string branchName)
         {
-            var qualifiedBranchName = "origin/" + branchName;
-            if (BranchExists(qualifiedBranchName))
+            return Task.Run(() =>
             {
-                throw new NuKeeperException($"Git Cannot checkout new branch: a branch named '{qualifiedBranchName}' already exists");
-            }
+                var qualifiedBranchName = "origin/" + branchName;
+                if (BranchExists(qualifiedBranchName))
+                {
+                    _logger.Normal($"Git Cannot checkout new branch: a branch named '{qualifiedBranchName}' already exists");
+                    return;
+                }
 
-            _logger.Detailed($"Git checkout new branch '{branchName}'");
-            using (var repo = MakeRepo())
-            {
-                var branch = repo.CreateBranch(branchName);
-                GitCommands.Checkout(repo, branch);
-            }
+                _logger.Detailed($"Git checkout new branch '{branchName}'");
+                using (var repo = MakeRepo())
+                {
+                    var branch = repo.CreateBranch(branchName);
+                    GitCommands.Checkout(repo, branch);
+                }
+            });
         }
 
         private bool BranchExists(string branchName)
@@ -105,15 +136,18 @@ namespace NuKeeper.Git
             }
         }
 
-        public void Commit(string message)
+        public Task Commit(string message)
         {
-            _logger.Detailed($"Git commit with message '{message}'");
-            using (var repo = MakeRepo())
+            return Task.Run(() =>
             {
-                var signature = GetSignature(repo);
-                GitCommands.Stage(repo, "*");
-                repo.Commit(message, signature, signature);
-            }
+                _logger.Detailed($"Git commit with message '{message}'");
+                using (var repo = MakeRepo())
+                {
+                    var signature = GetSignature(repo);
+                    GitCommands.Stage(repo, "*");
+                    repo.Commit(message, signature, signature);
+                }
+            });
         }
 
         private Signature GetSignature(Repository repo)
@@ -123,7 +157,7 @@ namespace NuKeeper.Git
                 return new Signature(_identity, DateTimeOffset.Now);
             }
 
-            var repoSignature =  repo.Config.BuildSignature(DateTimeOffset.Now);
+            var repoSignature = repo.Config.BuildSignature(DateTimeOffset.Now);
 
             if (repoSignature == null)
             {
@@ -134,32 +168,41 @@ namespace NuKeeper.Git
             return repoSignature;
         }
 
-        public void Push(string remoteName, string branchName)
+        public Task Push(string remoteName, string branchName)
         {
-            _logger.Detailed($"Git push to {remoteName}/{branchName}");
-
-            using (var repo = MakeRepo())
+            return Task.Run(() =>
             {
-                var localBranch = repo.Branches[branchName];
-                var remote = repo.Network.Remotes[remoteName];
+                _logger.Detailed($"Git push to {remoteName}/{branchName}");
 
-                repo.Branches.Update(localBranch,
-                    b => b.Remote = remote.Name,
-                    b => b.UpstreamBranch = localBranch.CanonicalName);
-
-                repo.Network.Push(localBranch, new PushOptions
+                using (var repo = MakeRepo())
                 {
-                    CredentialsProvider = UsernamePasswordCredentials
-                });
-            }
+
+                    var localBranch = repo.Branches
+                        .Single(b => b.CanonicalName.EndsWith(branchName, StringComparison.OrdinalIgnoreCase));
+                    var remote = repo.Network.Remotes
+                        .Single(b => b.Name.EndsWith(remoteName, StringComparison.OrdinalIgnoreCase));
+
+                    repo.Branches.Update(localBranch,
+                        b => b.Remote = remote.Name,
+                        b => b.UpstreamBranch = localBranch.CanonicalName);
+
+                    repo.Network.Push(localBranch, new PushOptions
+                    {
+                        CredentialsProvider = UsernamePasswordCredentials
+                    });
+                }
+            });
         }
 
-        public string GetCurrentHead()
+        public Task<string> GetCurrentHead()
         {
-            using (var repo = MakeRepo())
+            return Task.Run(() =>
             {
-                return repo.Branches.Single(b => b.IsCurrentRepositoryHead).FriendlyName;
-            }
+                using (var repo = MakeRepo())
+                {
+                    return repo.Branches.Single(b => b.IsCurrentRepositoryHead).FriendlyName;
+                }
+            });
         }
 
         private Repository MakeRepo()
@@ -171,6 +214,23 @@ namespace NuKeeper.Git
             string url, string usernameFromUrl, SupportedCredentialTypes types)
         {
             return _gitCredentials;
+        }
+
+
+        private Identity GetUserIdentity(User user)
+        {
+            if (string.IsNullOrWhiteSpace(user?.Name))
+            {
+                _logger.Minimal("User name missing from profile, falling back to .gitconfig");
+                return null;
+            }
+            if (string.IsNullOrWhiteSpace(user?.Email))
+            {
+                _logger.Minimal("Email missing from profile, falling back to .gitconfig");
+                return null;
+            }
+
+            return new Identity(user.Name, user.Email);
         }
     }
 }

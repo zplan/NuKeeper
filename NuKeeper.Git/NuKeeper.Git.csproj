@@ -5,15 +5,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibGit2Sharp" Version="0.26.0-preview-0070" />
+    <PackageReference Include="LibGit2Sharp" Version="0.26.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\NuKeeper.Abstractions\NuKeeper.Abstractions.csproj" />
+    <ProjectReference Include="..\NuKeeper.Update\NuKeeper.Update.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
     <CodeAnalysisRuleSet>..\CodeAnalysisRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <NoWarn>1701;1702,CA1031</NoWarn>
   </PropertyGroup>
 
 </Project>

@@ -1,17 +1,18 @@
 using System.Threading.Tasks;
 using McMaster.Extensions.CommandLineUtils;
+using NuKeeper.Abstractions;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Inspection.Logging;
 using NuKeeper.Local;
 
 namespace NuKeeper.Commands
 {
-    [Command(Description = "Applies relevant updates to a local project.")]
+    [Command("update", Description = "Applies relevant updates to a local project.")]
     internal class UpdateCommand : LocalNuKeeperCommand
     {
-        [Option(CommandOptionType.SingleValue, ShortName = "m", LongName = "maxupdate",
+        [Option(CommandOptionType.SingleValue, ShortName = "m", LongName = "maxpackageupdates",
             Description = "Maximum number of package updates to make. Defaults to 1.")]
-        protected int MaxPackageUpdates { get; } = 1;
+        public int? MaxPackageUpdates { get; set; }
 
         private readonly ILocalEngine _engine;
 
@@ -21,16 +22,28 @@ namespace NuKeeper.Commands
             _engine = engine;
         }
 
-        protected override ValidationResult PopulateSettings(SettingsContainer settings)
+        protected override async Task<ValidationResult> PopulateSettings(SettingsContainer settings)
         {
-            var baseResult = base.PopulateSettings(settings);
+            var baseResult = await base.PopulateSettings(settings);
             if (!baseResult.IsSuccess)
             {
                 return baseResult;
             }
 
-            settings.PackageFilters.MaxPackageUpdates = MaxPackageUpdates;
+            const int defaultMaxPackageUpdates = 1;
+            var fileSettings = FileSettingsCache.GetSettings();
 
+            var maxUpdates = Concat.FirstValue(
+                MaxPackageUpdates,
+                fileSettings.MaxPackageUpdates,
+                defaultMaxPackageUpdates);
+
+            if (maxUpdates < 1)
+            {
+                return ValidationResult.Failure($"Max package updates of {maxUpdates} is not valid");
+            }
+
+            settings.PackageFilters.MaxPackageUpdates = maxUpdates;
             return ValidationResult.Success;
         }
 

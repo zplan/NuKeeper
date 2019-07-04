@@ -1,17 +1,20 @@
 <p align="center"><img src="./assets/NuKeeperTopBar.jpg"></p>
 
-[![Build Status](https://dev.azure.com/nukeeper/NuKeeper/_apis/build/status/PR%20build?branchName=master&label=build)](https://dev.azure.com/nukeeper/NuKeeper/_build/latest?definitionId=3?branchName=master)
+[![Build Status](https://dev.azure.com/nukeeper/NuKeeper/_apis/build/status/NuKeeper%20PR%20Build?branchName=master)](https://dev.azure.com/nukeeper/NuKeeper/_build/latest?definitionId=4&branchName=master)
 [![Gitter](https://img.shields.io/gitter/room/NuKeeperDotNet/Lobby.js.svg?maxAge=2592000)](https://gitter.im/NuKeeperDotNet/Lobby)
-[![NuGet](https://img.shields.io/nuget/v/NuKeeper.svg?maxAge=3600)](https://www.nuget.org/packages/NuKeeper/)   
+[![NuGet](https://img.shields.io/nuget/v/NuKeeper.svg?maxAge=3600)](https://www.nuget.org/packages/NuKeeper/)
+[![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/nukeeper/NuKeeper/4.svg)](https://dev.azure.com/nukeeper/NuKeeper/_build?definitionId=4)   
 <p align="center">
-  <a href="https://github.com/NuKeeperDotNet/NuKeeper/wiki">NuKeeper Wiki Home</a> •
-  <a href="https://github.com/NuKeeperDotNet/NuKeeper/wiki/Getting-Started#getting-nukeeper">Installation</a> •
-  <a href="https://github.com/NuKeeperDotNet/NuKeeper/wiki/Getting-Started#using-nukeeper">Getting started</a> •
+  <a href="https://nukeeper.com">NuKeeper docs</a> •
+  <a href="https://nukeeper.com/basics/installation/">Installation</a> •
+  <a href="https://nukeeper.com/basics/installation/#using-nukeeper">Getting started</a> •
   <a href="https://github.com/NuKeeperDotNet/NuKeeper/wiki/Recipes">Recipes</a> •
   <a href="https://github.com/NuKeeperDotNet/NuKeeper/wiki/Debugging-NuKeeper">Debugging</a> •
 </p>
 
-### NuKeeper, 
+👀 Check out [nukeeper.com](https://nukeeper.com) to get started with NuKeeper 👀
+
+### NuKeeper
 
 Automagically update NuGet packages in all .NET projects.
 
@@ -21,6 +24,8 @@ Installation is very easy. Just run this command and the tool will be installed.
 
 Install: `dotnet tool install nukeeper --global`
 
+> Note: NuKeeper has experimental support for running package updates on Linux/macOS. This functionality relies on Mono installation on local system. Please refer to https://www.mono-project.com/ for more information about how to install mono.
+
 ### Platform support
 
 NuKeeper works for .NET Framework and for .NET Core projects. It also has the ability to target private NuGet feeds.
@@ -29,15 +34,15 @@ NuKeeper works for .NET Framework and for .NET Core projects. It also has the ab
 |:------------------:|:------------------:|:------------------------:| 
 | :heavy_check_mark: | :heavy_check_mark: |     :heavy_check_mark:   |
 
-The intergration for the following platforms is supported.
+Integration with the following platforms is supported.
 
-|     Github         |     AzureDevOps    |      BitBucket     |       GitLab        |
-|:------------------:|:------------------:|:------------------:| :------------------:| 
-| :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |         :x:         |
+|     Github         |     AzureDevOps    |      BitBucket     |       GitLab       |       Gitea        |
+|:------------------:|:------------------:|:------------------:|:------------------:|:------------------:|
+| :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 ### Commands
 
-NuKeeper has different command and options which can be utilized. Below you'll find a summary of all the commands and what they do.
+NuKeeper has different commands and options which can be utilized. Below you'll find a summary of all the commands and what they do.
 
 ```
 Options:
@@ -54,15 +59,39 @@ Commands:
 
 [For detailed information about the commands, please check out the wiki](https://github.com/NuKeeperDotNet/NuKeeper/wiki) 
 
+### How To Uninstall
+
+You can uninstall the tool using the following command.
+
+```console
+dotnet tool uninstall nukeeper --global
+```
+
+### How To Build and Run From Source
+
+You can install the nukeeper dotnet tool of current build using the `InstallNuKeeperDotNetTool` (.bat for Windows, .sh for macOS and Linux) found in the root of the repository.
+
+>Note: this overrides your existing global installation of the NuKeeper dotnet tool.
+
+You can build and package the tool using the following commands. The instructions assume that you are in the root of the repository.
+
+```console
+dotnet pack .\NuKeeper\NuKeeper.csproj -o ".\artifacts"
+dotnet tool install nukeeper --global --add-source ".\artifacts"
+nukeeper --version
+```
+
+> Note: On macOS and Linux, `.\NuKeeper\NuKeeper.csproj` and `.\artifacts` will need be switched to `./NuKeeper/NuKeeper.csproj` and `./artifacts` to accommodate for the different slash directions.
+
 ### Licensing
 
 NuKeeper is licensed under the [Apache License](http://opensource.org/licenses/apache.html)
 
-* Git automation by [LibGit2Sharp](https://github.com/libgit2/libgit2sharp/) which is licensend under MIT  
-* Github client by [Octokit](https://github.com/octokit/octokit.net) licensend under MIT  
-* NuGet protocol [NuGet.Protocol](https://github.com/NuGet/NuGet.Client) under Apache License Version 2.0
-* NuGet CommandLine [NuGet commandLine](https://github.com/NuGet/NuGet.Client) under Apache License Version 2.0
-* Command line parsing by [McMaster.Extensions.CommandLineUtils](https://github.com/natemcmaster/CommandLineUtils) under Apache License Version 2.0
+* Git automation by [LibGit2Sharp](https://github.com/libgit2/libgit2sharp/) licensed under MIT  
+* Github client by [Octokit](https://github.com/octokit/octokit.net) licensed under MIT  
+* NuGet protocol [NuGet.Protocol](https://github.com/NuGet/NuGet.Client) licensed under Apache License Version 2.0
+* NuGet CommandLine [NuGet commandLine](https://github.com/NuGet/NuGet.Client) licensed under Apache License Version 2.0
+* Command line parsing by [McMaster.Extensions.CommandLineUtils](https://github.com/natemcmaster/CommandLineUtils) licensed under Apache License Version 2.0
 
 ### Acknowledgements
 

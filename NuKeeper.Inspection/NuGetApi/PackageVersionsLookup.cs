@@ -8,6 +8,7 @@ using NuGet.Configuration;
 using NuGet.Protocol.Core.Types;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.NuGet;
+using NuKeeper.Abstractions.NuGetApi;
 
 namespace NuKeeper.Inspection.NuGetApi
 {
@@ -24,7 +25,7 @@ namespace NuKeeper.Inspection.NuGetApi
             _nuKeeperLogger = nuKeeperLogger;
         }
 
-        public async Task<IReadOnlyCollection<PackageSearchMedatadata>> Lookup(
+        public async Task<IReadOnlyCollection<PackageSearchMetadata>> Lookup(
             string packageName, bool includePrerelease,
             NuGetSources sources)
         {
@@ -38,7 +39,7 @@ namespace NuKeeper.Inspection.NuGetApi
                 .ToList();
         }
 
-        private async Task<IEnumerable<PackageSearchMedatadata>> RunFinderForSource(
+        private async Task<IEnumerable<PackageSearchMetadata>> RunFinderForSource(
             string packageName, bool includePrerelease, PackageSource source)
         {
             var sourceRepository = _packageSources.Get(source);
@@ -48,10 +49,12 @@ namespace NuKeeper.Inspection.NuGetApi
                 var metadatas = await FindPackage(metadataResource, packageName, includePrerelease);
                 return metadatas.Select(m => BuildPackageData(source, m));
             }
+#pragma warning disable CA1031
             catch (Exception ex)
+#pragma warning restore CA1031
             {
-                _nuKeeperLogger.Error($"Error getting {packageName} from {source}", ex);
-                return Enumerable.Empty<PackageSearchMedatadata>();
+                _nuKeeperLogger.Normal($"Getting {packageName} from {source} returned exception: {ex.Message}");
+                return Enumerable.Empty<PackageSearchMetadata>();
             }
         }
 
@@ -66,13 +69,13 @@ namespace NuKeeper.Inspection.NuGetApi
             }
         }
 
-        private static PackageSearchMedatadata BuildPackageData(PackageSource source, IPackageSearchMetadata metadata)
+        private static PackageSearchMetadata BuildPackageData(PackageSource source, IPackageSearchMetadata metadata)
         {
             var deps = metadata.DependencySets
                 .SelectMany(set => set.Packages)
                 .Distinct();
 
-            return new PackageSearchMedatadata(metadata.Identity, source, metadata.Published, deps);
+            return new PackageSearchMetadata(metadata.Identity, source, metadata.Published, deps);
         }
     }
 }

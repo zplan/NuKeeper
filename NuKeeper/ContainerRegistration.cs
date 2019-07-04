@@ -10,7 +10,9 @@ using NuKeeper.Collaboration;
 using NuKeeper.Engine;
 using NuKeeper.Engine.Packages;
 using NuKeeper.Git;
+using NuKeeper.Gitea;
 using NuKeeper.GitHub;
+using NuKeeper.Gitlab;
 using NuKeeper.Local;
 using NuKeeper.Update.Selection;
 using SimpleInjector;
@@ -45,6 +47,8 @@ namespace NuKeeper
             container.Register<IUpdateSelection, UpdateSelection>();
             container.Register<IFileSettingsCache, FileSettingsCache>();
 
+            container.RegisterSingleton<IEnvironmentVariablesProvider, EnvironmentVariablesProvider>();
+
             container.RegisterSingleton<IGitDiscoveryDriver, LibGit2SharpDiscoveryDriver>();
 
             container.RegisterSingleton<ICollaborationFactory, CollaborationFactory>();
@@ -56,6 +60,8 @@ namespace NuKeeper
                 typeof(VstsSettingsReader).Assembly,
                 typeof(BitbucketSettingsReader).Assembly,
                 typeof(BitBucketLocalSettingsReader).Assembly,
+                typeof(GitlabSettingsReader).Assembly,
+                typeof(GiteaSettingsReader).Assembly
             });
 
             container.Collection.Register<ISettingsReader>(settingsRegistration);

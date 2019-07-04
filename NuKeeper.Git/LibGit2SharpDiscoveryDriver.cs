@@ -1,17 +1,28 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using LibGit2Sharp;
+using NuKeeper.Abstractions;
 using NuKeeper.Abstractions.Formats;
 using NuKeeper.Abstractions.Git;
+using NuKeeper.Abstractions.Logging;
 
 namespace NuKeeper.Git
 {
     public class LibGit2SharpDiscoveryDriver : IGitDiscoveryDriver
     {
-        public bool IsGitRepo(Uri repositoryUri)
+        private readonly INuKeeperLogger _logger;
+
+        public LibGit2SharpDiscoveryDriver(INuKeeperLogger logger)
         {
-            var discovered = DiscoverRepo(repositoryUri);
+            _logger = logger;
+        }
+
+        public async Task<bool> IsGitRepo(Uri repositoryUri)
+        {
+            var discovered = await DiscoverRepo(repositoryUri);
             if (discovered == null)
             {
                 return false;
@@ -20,60 +31,78 @@ namespace NuKeeper.Git
             return Repository.IsValid(discovered.AbsolutePath);
         }
 
-        public IEnumerable<GitRemote> GetRemotes(Uri repositoryUri)
+        public async Task<IEnumerable<GitRemote>> GetRemotes(Uri repositoryUri)
         {
-            if (! IsGitRepo(repositoryUri))
+            if (!await IsGitRepo(repositoryUri))
             {
                 return Enumerable.Empty<GitRemote>();
             }
-            
+
             var discover = Repository.Discover(repositoryUri.AbsolutePath);
 
-            var repo = new Repository(discover);
-            
             var gitRemotes = new List<GitRemote>();
-
-            foreach (var remote in repo.Network.Remotes)
+            using (var repo = new Repository(discover))
             {
-                var gitRemote = new GitRemote
+                foreach (var remote in repo.Network.Remotes)
                 {
-                    Name = remote.Name,
-                    Url = new Uri(remote.Url)
-                };
-                gitRemotes.Add(gitRemote);
+                    Uri.TryCreate(remote.Url, UriKind.Absolute, out repositoryUri);
+
+                    if (repositoryUri != null)
+                    {
+                        var gitRemote = new GitRemote
+                        {
+                            Name = remote.Name,
+                            Url = repositoryUri
+                        };
+                        gitRemotes.Add(gitRemote);
+                    }
+                    else
+                    {
+                        _logger.Normal($"Cannot parse {remote.Url} to URI. SSH remote is currently not supported");
+                    }
+                }
+
+                return gitRemotes;
             }
-            
-            return gitRemotes;
         }
 
-        public Uri DiscoverRepo(Uri repositoryUri)
+        public Task<Uri> DiscoverRepo(Uri repositoryUri)
         {
-            var discovery = Repository.Discover(repositoryUri.AbsolutePath);
-
-            if (string.IsNullOrEmpty(discovery))
+            return Task.Run(() =>
             {
-                return null;
-            }
+                var discovery = Repository.Discover(repositoryUri.AbsolutePath);
 
-            return new Uri(discovery);
+                if (string.IsNullOrEmpty(discovery))
+                {
+                    return null;
+                }
+
+                return new Uri(discovery);
+            });
         }
 
-        public string GetCurrentHead(Uri repositoryUri)
+        public async Task<string> GetCurrentHead(Uri repositoryUri)
         {
-            using (var repo = new Repository(DiscoverRepo(repositoryUri).AbsolutePath))
+            var repoRoot = (await DiscoverRepo(repositoryUri)).AbsolutePath;
+            using (var repo = new Repository(repoRoot))
             {
-                var repoHead = repo.Branches.Single(b => b.IsCurrentRepositoryHead);
-                return repoHead.FriendlyName;
+                var repoHeadBranch = repo.Branches.
+                    SingleOrDefault(b => b.IsCurrentRepositoryHead);
+
+                if (repoHeadBranch == null)
+                {
+                    throw new NuKeeperException($"Cannot find current head branch for repo at '{repoRoot}', with {repo.Branches.Count()} branches");
+                }
+
+                return repoHeadBranch.FriendlyName;
             }
         }
 
-        public GitRemote GetRemoteForPlatform(Uri repositoryUri, string platformHost)
+        public async Task<GitRemote> GetRemoteForPlatform(Uri repositoryUri, string platformHost)
         {
-            var remotes = GetRemotes(repositoryUri);
+            var remotes = await GetRemotes(repositoryUri);
             return remotes
                 .FirstOrDefault(rm => rm.Url.Host.Contains(platformHost, StringComparison.OrdinalIgnoreCase));
         }
     }
-
-
 }

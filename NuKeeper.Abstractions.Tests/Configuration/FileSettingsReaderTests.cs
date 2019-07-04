@@ -4,6 +4,7 @@ using System.IO;
 using NSubstitute;
 using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
+using NuKeeper.Abstractions.Inspections.Files;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.Output;
 using NUnit.Framework;
@@ -13,14 +14,31 @@ namespace NuKeeper.Abstractions.Tests.Configuration
     [TestFixture]
     public class FileSettingsReaderTests
     {
+        private string _uniqueTemporaryFolder = null;
+
+        [SetUp]
+        public void Setup()
+        {
+            _uniqueTemporaryFolder = UniqueTemporaryFolder();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (Directory.Exists(_uniqueTemporaryFolder))
+            {
+                Directory.Delete(_uniqueTemporaryFolder, true);
+            }
+        }
+        
+
+
         [Test]
         public void MissingFileReturnsNoSettings()
         {
-            var folder = TemporaryFolder();
-
             var fsr = new FileSettingsReader(Substitute.For<INuKeeperLogger>());
 
-            var data = fsr.Read(folder);
+            var data = fsr.Read(_uniqueTemporaryFolder);
 
             Assert.That(data, Is.Not.Null);
             Assert.That(data.Age, Is.Null);
@@ -28,7 +46,7 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.Include, Is.Null);
             Assert.That(data.Exclude, Is.Null);
             Assert.That(data.Label, Is.Null);
-            Assert.That(data.MaxPr, Is.Null);
+            Assert.That(data.MaxPackageUpdates, Is.Null);
             Assert.That(data.MaxRepo, Is.Null);
             Assert.That(data.Verbosity, Is.Null);
             Assert.That(data.Change, Is.Null);
@@ -40,6 +58,8 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.OutputFileName, Is.Null);
             Assert.That(data.LogDestination, Is.Null);
             Assert.That(data.Platform, Is.Null);
+            Assert.That(data.BranchNamePrefix, Is.Null);
+            Assert.That(data.DeleteBranchAfterMerge, Is.Null);
         }
 
         [Test]
@@ -47,7 +67,7 @@ namespace NuKeeper.Abstractions.Tests.Configuration
         {
             var path = MakeTestFile("{}");
 
-            var fsr =  new FileSettingsReader(Substitute.For<INuKeeperLogger>());
+            var fsr = new FileSettingsReader(Substitute.For<INuKeeperLogger>());
 
             var data = fsr.Read(path);
 
@@ -57,7 +77,7 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.Include, Is.Null);
             Assert.That(data.Exclude, Is.Null);
             Assert.That(data.Label, Is.Null);
-            Assert.That(data.MaxPr, Is.Null);
+            Assert.That(data.MaxPackageUpdates, Is.Null);
             Assert.That(data.MaxRepo, Is.Null);
             Assert.That(data.Verbosity, Is.Null);
             Assert.That(data.Change, Is.Null);
@@ -69,6 +89,8 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.OutputFileName, Is.Null);
             Assert.That(data.LogDestination, Is.Null);
             Assert.That(data.Platform, Is.Null);
+            Assert.That(data.BranchNamePrefix, Is.Null);
+            Assert.That(data.DeleteBranchAfterMerge, Is.Null);
         }
 
         private const string FullFileData = @"{
@@ -80,7 +102,8 @@ namespace NuKeeper.Abstractions.Tests.Configuration
                ""excludeRepos"":""repoOut"",
                ""label"": [ ""foo"", ""bar"" ],
                ""logFile"":""somefile.log"",
-               ""maxpr"": 42,
+               ""branchNamePrefix"": ""nukeeper"",
+               ""maxPackageUpdates"": 42,
                ""maxRepo"": 12,
                ""verbosity"": ""Detailed"",
                ""Change"": ""Minor"",
@@ -90,13 +113,13 @@ namespace NuKeeper.Abstractions.Tests.Configuration
                ""OutputDestination"": ""Console"",
                ""OutputFileName"" : ""out_42.txt"",
                ""LogDestination"" : ""file"",
-               ""Platform"" : ""Bitbucket""
-}";
+               ""Platform"" : ""Bitbucket"",
+               ""DeleteBranchAfterMerge"": ""true""
+        }";
 
         [Test]
         public void PopulatedConfigReturnsAllStringSettings()
         {
-
             var path = MakeTestFile(FullFileData);
 
             var fsr = new FileSettingsReader(Substitute.For<INuKeeperLogger>());
@@ -112,12 +135,13 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.ExcludeRepos, Is.EqualTo("repoOut"));
             Assert.That(data.LogFile, Is.EqualTo("somefile.log"));
             Assert.That(data.OutputFileName, Is.EqualTo("out_42.txt"));
+            Assert.That(data.BranchNamePrefix, Is.EqualTo("nukeeper"));
+            Assert.That(data.DeleteBranchAfterMerge, Is.EqualTo(true));
         }
 
         [Test]
         public void PopulatedConfigReturnsLabels()
         {
-
             var path = MakeTestFile(FullFileData);
 
             var fsr = new FileSettingsReader(Substitute.For<INuKeeperLogger>());
@@ -132,21 +156,19 @@ namespace NuKeeper.Abstractions.Tests.Configuration
         [Test]
         public void PopulatedConfigReturnsNumericSettings()
         {
-
             var path = MakeTestFile(FullFileData);
 
             var fsr = new FileSettingsReader(Substitute.For<INuKeeperLogger>());
 
             var data = fsr.Read(path);
 
-            Assert.That(data.MaxPr, Is.EqualTo(42));
+            Assert.That(data.MaxPackageUpdates, Is.EqualTo(42));
             Assert.That(data.MaxRepo, Is.EqualTo(12));
         }
 
         [Test]
         public void PopulatedConfigReturnsEnumSettings()
         {
-
             var path = MakeTestFile(FullFileData);
 
             var fsr = new FileSettingsReader(Substitute.For<INuKeeperLogger>());
@@ -166,7 +188,7 @@ namespace NuKeeper.Abstractions.Tests.Configuration
         }
 
         [Test]
-        public void ConfigKeysAreCaseInsensitive()
+            public void ConfigKeysAreCaseInsensitive()
         {
             const string configData = @"{
                ""Age"":""3d"",
@@ -175,10 +197,13 @@ namespace NuKeeper.Abstractions.Tests.Configuration
                ""excludE"":""fish"",
                ""IncluDeRepoS"":""repo2"",
                ""label"": [""mark"" ],
+               ""MaxPackageUpdates"":4,
                ""MAXrepo"":3,
                ""vErBoSiTy"": ""Q"",
-               ""CHANGE"": ""PATCH""
-}";
+               ""CHANGE"": ""PATCH"",
+               ""bRanCHNamEPREfiX"": ""nukeeper"",
+               ""deLeTEBranCHafTERMerge"": ""true""
+            }";
 
             var path = MakeTestFile(configData);
 
@@ -194,9 +219,12 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.IncludeRepos, Is.EqualTo("repo2"));
             Assert.That(data.Label.Count, Is.EqualTo(1));
             Assert.That(data.Label, Does.Contain("mark"));
+            Assert.That(data.MaxPackageUpdates, Is.EqualTo(4));
             Assert.That(data.MaxRepo, Is.EqualTo(3));
             Assert.That(data.Verbosity, Is.EqualTo(LogLevel.Quiet));
             Assert.That(data.Change, Is.EqualTo(VersionChange.Patch));
+            Assert.That(data.BranchNamePrefix, Is.EqualTo("nukeeper"));
+            Assert.That(data.DeleteBranchAfterMerge, Is.EqualTo(true));
         }
 
         [Test]
@@ -206,7 +234,7 @@ namespace NuKeeper.Abstractions.Tests.Configuration
                ""age"":""3d"",
                ""api"":""http://api.com"",
                ""something"":""nothing""
-}";
+            }";
 
             var path = MakeTestFile(configData);
 
@@ -219,16 +247,14 @@ namespace NuKeeper.Abstractions.Tests.Configuration
             Assert.That(data.Api, Is.EqualTo("http://api.com"));
         }
 
-
-        private static string MakeTestFile(string contents)
+        private string MakeTestFile(string contents)
         {
-            var folder = TemporaryFolder();
-            var path = Path.Join(folder, "nukeeper.settings.json");
+            var path = Path.Join(_uniqueTemporaryFolder, "nukeeper.settings.json");
             File.WriteAllText(path, contents);
-            return folder;
+            return _uniqueTemporaryFolder;
         }
 
-        private static string TemporaryFolder()
+        private static string UniqueTemporaryFolder()
         {
             var uniqueName = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
             var folder = Path.Combine(Path.GetTempPath(), "NuKeeper", uniqueName);

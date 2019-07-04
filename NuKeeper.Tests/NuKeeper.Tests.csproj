@@ -1,16 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <CodeAnalysisRuleSet>..\CodeAnalysisRulesForTests.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LibGit2Sharp" Version="0.26.0-preview-0070" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
-    <PackageReference Include="NSubstitute" Version="3.1.0" />
-    <PackageReference Include="NUnit" Version="3.11.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="3.12.0" />
-    <PackageReference Include="SimpleInjector" Version="4.4.2" />
+    <PackageReference Include="coverlet.msbuild" Version="2.6.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.1.0" />
+    <PackageReference Include="NSubstitute" Version="4.1.0" />
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.13.0" />
+    <PackageReference Include="SimpleInjector" Version="4.6.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\NuKeeper.Abstractions\NuKeeper.Abstractions.csproj" />
     <ProjectReference Include="..\NuKeeper.Inspection\NuKeeper.Inspection.csproj" />
     <ProjectReference Include="..\NuKeeper.Update\NuKeeper.Update.csproj" />
     <ProjectReference Include="..\NuKeeper\NuKeeper.csproj" />

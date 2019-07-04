@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NuKeeper.Abstractions.RepositoryInspection;
 using NuKeeper.Inspection.Report;
 using NuKeeper.Inspection.Report.Formats;
 using NuKeeper.Inspection.RepositoryInspection;
@@ -86,8 +87,8 @@ namespace NuKeeper.Inspection.Tests.Report.Formats
                 return (IReportFormat)noArgCtor.Invoke(Array.Empty<object>());
             }
 
-            var oneArgCtor = reportType.GetConstructor(new [] { typeof(IReportWriter) } );
-            return (IReportFormat)oneArgCtor.Invoke(new object[] { writer } );
+            var oneArgCtor = reportType.GetConstructor(new[] { typeof(IReportWriter) });
+            return (IReportFormat)oneArgCtor.Invoke(new object[] { writer });
         }
     }
 }

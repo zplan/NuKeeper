@@ -5,6 +5,7 @@ using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.Logging;
+using NuKeeper.Abstractions.NuGetApi;
 using NuKeeper.Inspection.NuGetApi;
 using NUnit.Framework;
 
@@ -36,8 +37,8 @@ namespace NuKeeper.Inspection.Tests.NuGetApi
             var logger = Substitute.For<INuKeeperLogger>();
             var reporter = new PackageLookupResultReporter(logger);
 
-            var fooMetadata = new PackageSearchMedatadata(
-                new PackageIdentity("foo", new NuGetVersion(2, 3, 4)), 
+            var fooMetadata = new PackageSearchMetadata(
+                new PackageIdentity("foo", new NuGetVersion(2, 3, 4)),
                 new PackageSource("http://none"), DateTimeOffset.Now, null);
 
             var data = new PackageLookupResult(VersionChange.Major, fooMetadata, fooMetadata, fooMetadata);
@@ -57,7 +58,7 @@ namespace NuKeeper.Inspection.Tests.NuGetApi
             var logger = Substitute.For<INuKeeperLogger>();
             var reporter = new PackageLookupResultReporter(logger);
 
-            var fooMetadata = new PackageSearchMedatadata(
+            var fooMetadata = new PackageSearchMetadata(
                 new PackageIdentity("foo", new NuGetVersion(2, 3, 4)),
                 new PackageSource("http://none"), DateTimeOffset.Now, null);
 
@@ -79,10 +80,10 @@ namespace NuKeeper.Inspection.Tests.NuGetApi
             var logger = Substitute.For<INuKeeperLogger>();
             var reporter = new PackageLookupResultReporter(logger);
 
-            var fooMajor = new PackageSearchMedatadata(
+            var fooMajor = new PackageSearchMetadata(
                 new PackageIdentity("foo", new NuGetVersion(3, 0, 0)),
                 new PackageSource("http://none"), DateTimeOffset.Now, null);
-            var fooMinor = new PackageSearchMedatadata(
+            var fooMinor = new PackageSearchMetadata(
                 new PackageIdentity("foo", new NuGetVersion(2, 3, 4)),
                 new PackageSource("http://none"), DateTimeOffset.Now, null);
 
@@ -103,7 +104,7 @@ namespace NuKeeper.Inspection.Tests.NuGetApi
             var logger = Substitute.For<INuKeeperLogger>();
             var reporter = new PackageLookupResultReporter(logger);
 
-            var fooMajor = new PackageSearchMedatadata(
+            var fooMajor = new PackageSearchMetadata(
                 new PackageIdentity("foo", new NuGetVersion(3, 0, 0)),
                 new PackageSource("http://none"), DateTimeOffset.Now, null);
 

@@ -5,6 +5,7 @@ using System.Text;
 using NSubstitute;
 using NuGet.Versioning;
 using NuKeeper.Abstractions.Logging;
+using NuKeeper.Abstractions.RepositoryInspection;
 using NuKeeper.Inspection.RepositoryInspection;
 using NUnit.Framework;
 
@@ -363,7 +364,7 @@ namespace NuKeeper.Inspection.Tests.RepositoryInspection
             Assert.That(packages.Count, Is.EqualTo(1));
             Assert.That(packages.First().IsPrerelease, Is.False);
         }
-        
+
         [Test]
         public void PackageWithAssetsVersionShouldBeRead()
         {

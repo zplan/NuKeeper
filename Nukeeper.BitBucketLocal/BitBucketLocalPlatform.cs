@@ -30,7 +30,7 @@ namespace NuKeeper.BitBucketLocal
             var httpClient = new HttpClient
             {
                 BaseAddress = new Uri($"{settings.ApiBase.Scheme}://{settings.ApiBase.Authority}")
-             };
+            };
 
             _client = new BitbucketLocalRestClient(httpClient, _logger, settings.Username, settings.Token);
         }
@@ -81,7 +81,6 @@ namespace NuKeeper.BitBucketLocal
                     new Repository(repo.Name, false,
                         new UserPermissions(true, true, true),
                         new Uri(repo.Links.Clone.First(x => x.Name.StartsWith("http", StringComparison.InvariantCultureIgnoreCase)).Href),
-                        new Uri(repo.Links.Clone.First(x => x.Name.StartsWith("http", StringComparison.InvariantCultureIgnoreCase)).Href),
                         null, false, null))
                 .ToList();
         }
@@ -117,16 +116,18 @@ namespace NuKeeper.BitBucketLocal
             var repositoryFileNames = new List<string>();
             foreach (var repo in searchRequest.Repos)
             {
-                repositoryFileNames.AddRange(await _client.GetGitRepositoryFileNames(repo.owner, repo.name)); 
+                repositoryFileNames.AddRange(await _client.GetGitRepositoryFileNames(repo.Owner, repo.Name));
             }
 
-            var searchStrings = searchRequest.Term.Replace("\"", string.Empty).Split(new string[] { "OR" }, StringSplitOptions.None);
+            var searchStrings = searchRequest.Term
+                .Replace("\"", string.Empty)
+                .Split(new[] { "OR" }, StringSplitOptions.None);
 
             foreach (var searchString in searchStrings)
             {
                 totalCount += repositoryFileNames.FindAll(x => x.EndsWith(searchString.Trim(), StringComparison.InvariantCultureIgnoreCase)).Count;
             }
-       
+
             return new SearchCodeResult(totalCount);
         }
     }

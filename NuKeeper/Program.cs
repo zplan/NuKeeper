@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using McMaster.Extensions.CommandLineUtils;
 using NuKeeper.Commands;
 
-[assembly:InternalsVisibleTo("NuKeeper.Tests")]
+[assembly: InternalsVisibleTo("NuKeeper.Tests")]
 
 #pragma warning disable CA1822
 
@@ -14,18 +14,18 @@ namespace NuKeeper
         Name = "NuKeeper",
         FullName = "Automagically update NuGet packages in .NET projects.")]
     [VersionOptionFromMember(MemberName = nameof(GetVersion))]
-    [Subcommand("inspect", typeof(InspectCommand))]
-    [Subcommand("update", typeof(UpdateCommand))]
-    [Subcommand("repo", typeof(RepositoryCommand))]
-    [Subcommand("org", typeof(OrganisationCommand))]
-    [Subcommand("global", typeof(GlobalCommand))]
+    [Subcommand(typeof(InspectCommand))]
+    [Subcommand(typeof(UpdateCommand))]
+    [Subcommand(typeof(RepositoryCommand))]
+    [Subcommand(typeof(OrganisationCommand))]
+    [Subcommand(typeof(GlobalCommand))]
     public class Program
     {
         public static int Main(string[] args)
         {
             var container = ContainerRegistration.Init();
 
-            var app = new CommandLineApplication<Program> {ThrowOnUnexpectedArgument = false};
+            var app = new CommandLineApplication<Program> { ThrowOnUnexpectedArgument = false };
             app.Conventions.UseDefaultConventions().UseConstructorInjection(container);
 
             try

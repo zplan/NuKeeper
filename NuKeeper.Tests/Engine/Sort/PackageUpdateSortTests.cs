@@ -10,6 +10,7 @@ using NuKeeper.Abstractions;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Inspection.Sort;
 using NuKeeper.Inspection.RepositoryInspection;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Tests.Engine.Sort
 {
@@ -201,7 +202,7 @@ namespace NuKeeper.Tests.Engine.Sort
             var package = new PackageIdentity("foo.bar", new NuGetVersion("1.2.3"));
 
             var projects = new List<PackageInProject>();
-            foreach(var i in Enumerable.Range(1, projectCount))
+            foreach (var i in Enumerable.Range(1, projectCount))
             {
                 projects.Add(MakePackageInProjectFor(package));
             }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NuKeeper.Abstractions;
 using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
@@ -9,7 +10,10 @@ using NuKeeper.Abstractions.Logging;
 using NuKeeper.AzureDevOps;
 using NuKeeper.BitBucket;
 using NuKeeper.BitBucketLocal;
+using NuKeeper.Engine;
+using NuKeeper.Gitea;
 using NuKeeper.GitHub;
+using NuKeeper.Gitlab;
 
 namespace NuKeeper.Collaboration
 {
@@ -20,6 +24,8 @@ namespace NuKeeper.Collaboration
         private Platform? _platform;
 
         public IForkFinder ForkFinder { get; private set; }
+
+        public ICommitWorder CommitWorder { get; private set; }
 
         public IRepositoryDiscovery RepositoryDiscovery { get; private set; }
 
@@ -35,10 +41,10 @@ namespace NuKeeper.Collaboration
             Settings = new CollaborationPlatformSettings();
         }
 
-        public ValidationResult Initialise(Uri apiEndpoint, string token,
+        public async Task<ValidationResult> Initialise(Uri apiEndpoint, string token,
             ForkMode? forkModeFromSettings, Platform? platformFromSettings)
         {
-            var platformSettingsReader = FindPlatformSettingsReader(platformFromSettings, apiEndpoint);
+            var platformSettingsReader = await FindPlatformSettingsReader(platformFromSettings, apiEndpoint);
             if (platformSettingsReader != null)
             {
                 _platform = platformSettingsReader.Platform;
@@ -64,7 +70,7 @@ namespace NuKeeper.Collaboration
             return ValidationResult.Success;
         }
 
-        private ISettingsReader FindPlatformSettingsReader(
+        private async Task<ISettingsReader> FindPlatformSettingsReader(
             Platform? platformFromSettings, Uri apiEndpoint)
         {
             if (platformFromSettings.HasValue)
@@ -81,8 +87,8 @@ namespace NuKeeper.Collaboration
             }
             else
             {
-                var reader = _settingReaders
-                    .FirstOrDefault(s => s.CanRead(apiEndpoint));
+                var reader = await _settingReaders
+                    .FirstOrDefaultAsync(s => s.CanRead(apiEndpoint));
 
                 if (reader != null)
                 {
@@ -130,24 +136,45 @@ namespace NuKeeper.Collaboration
                     CollaborationPlatform = new AzureDevOpsPlatform(_nuKeeperLogger);
                     RepositoryDiscovery = new AzureDevOpsRepositoryDiscovery(_nuKeeperLogger, Settings.Token);
                     ForkFinder = new AzureDevOpsForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
+
+                    // We go for the specific platform version of ICommitWorder
+                    // here since Azure DevOps has different commit message limits compared to other platforms.
+                    CommitWorder = new AzureDevOpsCommitWorder();
                     break;
 
                 case Platform.GitHub:
                     CollaborationPlatform = new OctokitClient(_nuKeeperLogger);
                     RepositoryDiscovery = new GitHubRepositoryDiscovery(_nuKeeperLogger, CollaborationPlatform);
                     ForkFinder = new GitHubForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
+                    CommitWorder = new DefaultCommitWorder();
                     break;
 
                 case Platform.Bitbucket:
                     CollaborationPlatform = new BitbucketPlatform(_nuKeeperLogger);
                     RepositoryDiscovery = new BitbucketRepositoryDiscovery(_nuKeeperLogger);
                     ForkFinder = new BitbucketForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
+                    CommitWorder = new DefaultCommitWorder();
                     break;
 
                 case Platform.BitbucketLocal:
                     CollaborationPlatform = new BitBucketLocalPlatform(_nuKeeperLogger);
                     RepositoryDiscovery = new BitbucketLocalRepositoryDiscovery(_nuKeeperLogger, CollaborationPlatform, Settings);
                     ForkFinder = new BitbucketForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
+                    CommitWorder = new DefaultCommitWorder();
+                    break;
+
+                case Platform.GitLab:
+                    CollaborationPlatform = new GitlabPlatform(_nuKeeperLogger);
+                    RepositoryDiscovery = new GitlabRepositoryDiscovery(_nuKeeperLogger, CollaborationPlatform);
+                    ForkFinder = new GitlabForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
+                    CommitWorder = new DefaultCommitWorder();
+                    break;
+
+                case Platform.Gitea:
+                    CollaborationPlatform = new GiteaPlatform(_nuKeeperLogger);
+                    RepositoryDiscovery = new GiteaRepositoryDiscovery(_nuKeeperLogger, CollaborationPlatform);
+                    ForkFinder = new GiteaForkFinder(CollaborationPlatform, _nuKeeperLogger, forkMode);
+                    CommitWorder = new DefaultCommitWorder();
                     break;
 
                 default:

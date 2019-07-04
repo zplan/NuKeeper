@@ -24,11 +24,11 @@ namespace NuKeeper.Commands
                 "Prefer to make branches on a fork of the writer repository, or on that repository itself. Allowed values are PreferFork, PreferSingleRepository, SingleRepositoryOnly.")]
         public ForkMode? ForkMode { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "p", LongName = "maxpr",
-            Description = "The maximum number of pull requests to raise on any repository. Defaults to 3.")]
-        public int? MaxPullRequestsPerRepository { get; set; }
+        [Option(CommandOptionType.SingleValue, ShortName = "m", LongName = "maxpackageupdates",
+            Description = "The maximum number of package updates to apply on one repository. Defaults to 3.")]
+        public int? MaxPackageUpdates { get; set; }
 
-        [Option(CommandOptionType.NoValue, ShortName = "co", LongName = "consolidate",
+        [Option(CommandOptionType.NoValue, ShortName = "n", LongName = "consolidate",
             Description = "Consolidate updates into a single pull request. Defaults to false.")]
         public bool? Consolidate { get; set; }
 
@@ -42,9 +42,13 @@ namespace NuKeeper.Commands
                 "Api Base Url. If you are using an internal server and not a public one, you must set it to the api url of your server.")]
         public string ApiEndpoint { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "t", LongName = "platform",
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "platform",
             Description = "Sets the collaboration platform type. By default this is inferred from the Url.")]
         public Platform? Platform { get; set; }
+
+        [Option(CommandOptionType.SingleValue, ShortName = "d", LongName = "deletebranchaftermerge",
+            Description = "Deletes branch created by NuKeeper after merge. Defaults to true.")]
+        public bool? DeleteBranchAfterMerge { get; set; }
 
         protected CollaborationPlatformCommand(ICollaborationEngine engine, IConfigureLogger logger,
             IFileSettingsCache fileSettingsCache, ICollaborationFactory collaborationFactory) :
@@ -54,9 +58,9 @@ namespace NuKeeper.Commands
             CollaborationFactory = collaborationFactory;
         }
 
-        protected override ValidationResult PopulateSettings(SettingsContainer settings)
+        protected override async Task<ValidationResult> PopulateSettings(SettingsContainer settings)
         {
-            var baseResult = base.PopulateSettings(settings);
+            var baseResult = await base.PopulateSettings(settings);
             if (!baseResult.IsSuccess)
             {
                 return baseResult;
@@ -75,7 +79,7 @@ namespace NuKeeper.Commands
 
             try
             {
-                var collaborationResult = CollaborationFactory.Initialise(
+                var collaborationResult = await CollaborationFactory.Initialise(
                     baseUri, PersonalAccessToken,
                     forkMode, platform);
 
@@ -84,7 +88,9 @@ namespace NuKeeper.Commands
                     return collaborationResult;
                 }
             }
+#pragma warning disable CA1031
             catch (Exception ex)
+#pragma warning restore CA1031
             {
                 return ValidationResult.Failure(ex.Message);
             }
@@ -97,14 +103,20 @@ namespace NuKeeper.Commands
             settings.UserSettings.ConsolidateUpdatesInSinglePullRequest =
                 Concat.FirstValue(Consolidate, fileSettings.Consolidate, false);
 
-            const int defaultMaxPullRequests = 3;
+            const int defaultMaxPackageUpdates = 3;
             settings.PackageFilters.MaxPackageUpdates =
-                Concat.FirstValue(MaxPullRequestsPerRepository, fileSettings.MaxPr, defaultMaxPullRequests);
+                Concat.FirstValue(MaxPackageUpdates, fileSettings.MaxPackageUpdates, defaultMaxPackageUpdates);
 
-            var defaultLabels = new List<string> {"nukeeper"};
+            var defaultLabels = new List<string> { "nukeeper" };
 
             settings.SourceControlServerSettings.Labels =
                 Concat.FirstPopulatedList(Label, fileSettings.Label, defaultLabels);
+
+            var deleteBranchAfterMergeValid = PopulateDeleteBranchAfterMerge(settings);
+            if (!deleteBranchAfterMergeValid.IsSuccess)
+            {
+                return deleteBranchAfterMergeValid;
+            }
 
             return ValidationResult.Success;
         }
@@ -113,6 +125,29 @@ namespace NuKeeper.Commands
         {
             await _engine.Run(settings);
             return 0;
+        }
+
+        private ValidationResult PopulateDeleteBranchAfterMerge(
+            SettingsContainer settings)
+        {
+            var fileSettings = FileSettingsCache.GetSettings();
+
+            if (!Platform.HasValue)
+            {
+                settings.BranchSettings.DeleteBranchAfterMerge = true;
+                return ValidationResult.Success;
+            }
+
+            if (Platform != Abstractions.CollaborationPlatform.Platform.AzureDevOps
+                && Platform != Abstractions.CollaborationPlatform.Platform.GitLab
+                && Platform != Abstractions.CollaborationPlatform.Platform.Bitbucket)
+            {
+                return ValidationResult.Failure(
+                        $"Deletion of source branch after merge is currently only available for Azure DevOps, Gitlab and Bitbucket.");
+            }
+
+            settings.BranchSettings.DeleteBranchAfterMerge = Concat.FirstValue(DeleteBranchAfterMerge, fileSettings.DeleteBranchAfterMerge, true);
+            return ValidationResult.Success;
         }
     }
 }

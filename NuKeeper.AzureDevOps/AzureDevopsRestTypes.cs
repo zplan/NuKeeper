@@ -81,7 +81,7 @@ namespace NuKeeper.AzureDevOps
     }
     public class Project
     {
-        public string description  { get; set; }
+        public string description { get; set; }
         public string id { get; set; }
         public string name { get; set; }
         public string url { get; set; }
@@ -95,7 +95,13 @@ namespace NuKeeper.AzureDevOps
         public string targetRefName { get; set; }
         public string title { get; set; }
         public string description { get; set; }
+        public GitPullRequestCompletionOptions completionOptions { get; set; }
     }
+    public class GitPullRequestCompletionOptions
+    {
+        public bool deleteSourceBranch { get; set; }
+    }
+
     public class AzureRepository
     {
         public string id { get; set; }
@@ -103,7 +109,7 @@ namespace NuKeeper.AzureDevOps
         public string url { get; set; }
         public Project project { get; set; }
         public string defaultBranch { get; set; }
-        public int size { get; set; }
+        public long size { get; set; }
         public string remoteUrl { get; set; }
         public string sshUrl { get; set; }
     }

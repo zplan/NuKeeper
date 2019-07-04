@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using McMaster.Extensions.CommandLineUtils;
 using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
@@ -7,7 +8,7 @@ using NuKeeper.Inspection.Logging;
 
 namespace NuKeeper.Commands
 {
-    [Command(Description = "Performs version checks and generates pull requests for all repositories the provided token can access.")]
+    [Command("global", Description = "Performs version checks and generates pull requests for all repositories the provided token can access.")]
     internal class GlobalCommand : MultipleRepositoryCommand
     {
         public GlobalCommand(ICollaborationEngine engine, IConfigureLogger logger, IFileSettingsCache fileSettingsCache, ICollaborationFactory collaborationFactory)
@@ -15,9 +16,9 @@ namespace NuKeeper.Commands
         {
         }
 
-        protected override ValidationResult PopulateSettings(SettingsContainer settings)
+        protected override async Task<ValidationResult> PopulateSettings(SettingsContainer settings)
         {
-            var baseResult = base.PopulateSettings(settings);
+            var baseResult = await base.PopulateSettings(settings);
             if (!baseResult.IsSuccess)
             {
                 return baseResult;

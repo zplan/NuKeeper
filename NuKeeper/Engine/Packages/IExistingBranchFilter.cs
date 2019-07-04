@@ -1,6 +1,6 @@
-using NuKeeper.Inspection.RepositoryInspection;
 using System.Threading.Tasks;
 using NuKeeper.Abstractions.CollaborationModels;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Engine.Packages
 {
@@ -8,6 +8,7 @@ namespace NuKeeper.Engine.Packages
     {
         Task<bool> CanMakeBranchFor(
             PackageUpdateSet packageUpdateSet,
-            ForkData pushFork);
+            ForkData pushFork,
+            string branchNamePrefix = null);
     }
 }

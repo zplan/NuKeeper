@@ -27,7 +27,7 @@ namespace NuKeeper.Abstractions.Configuration
 
         public string LogFile { get; set; }
 
-        public int? MaxPr { get; set; }
+        public int? MaxPackageUpdates { get; set; }
         public int? MaxRepo { get; set; }
 
         public bool? Consolidate { get; set; }
@@ -38,6 +38,11 @@ namespace NuKeeper.Abstractions.Configuration
 
         public LogDestination? LogDestination { get; set; }
         public Platform? Platform { get; set; }
+
+        public string BranchNamePrefix { get; set; }
+        public bool? DeleteBranchAfterMerge { get; set; }
+
+        public string GitCliPath { get; set; }
 
         public static FileSettings Empty()
         {

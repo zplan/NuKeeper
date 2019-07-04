@@ -38,12 +38,17 @@ namespace NuKeeper.AzureDevOps
         {
             var repos = await _client.GetGitRepositories(target.Owner);
             var repo = repos.Single(x => x.name == target.Name);
+
             var req = new PRRequest
             {
                 title = request.Title,
                 sourceRefName = $"refs/heads/{request.Head}",
                 description = request.Body,
-                targetRefName = $"refs/heads/{request.BaseRef}"
+                targetRefName = $"refs/heads/{request.BaseRef}",
+                completionOptions = new GitPullRequestCompletionOptions
+                {
+                    deleteSourceBranch = request.DeleteBranchAfterMerge
+                }
             };
 
             var pullRequest = await _client.CreatePullRequest(req, target.Owner, repo.id);
@@ -69,7 +74,7 @@ namespace NuKeeper.AzureDevOps
             return repos.Select(x =>
                     new Repository(x.name, false,
                         new UserPermissions(true, true, true),
-                        new Uri(x.url), new Uri(x.remoteUrl),
+                        new Uri(x.remoteUrl),
                         null, false, null))
                 .ToList();
         }
@@ -90,7 +95,7 @@ namespace NuKeeper.AzureDevOps
             var repos = await _client.GetGitRepositories(projectName);
             var repo = repos.Single(x => x.name == repositoryName);
             var refs = await _client.GetRepositoryRefs(projectName, repo.id);
-            var count = refs.Count(x => x.name == branchName);
+            var count = refs.Count(x => x.name.EndsWith(branchName, StringComparison.OrdinalIgnoreCase));
             if (count > 0)
             {
                 _logger.Detailed($"Branch found for {projectName} / {repositoryName} / {branchName}");

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using NuKeeper.Abstractions;
 using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
@@ -9,29 +10,31 @@ namespace NuKeeper.BitBucket
 {
     public class BitbucketSettingsReader : ISettingsReader
     {
+        private readonly IEnvironmentVariablesProvider _environmentVariablesProvider;
+
+        public BitbucketSettingsReader(IEnvironmentVariablesProvider environmentVariablesProvider)
+        {
+            _environmentVariablesProvider = environmentVariablesProvider;
+        }
+
         public Platform Platform => Platform.Bitbucket;
 
         private string Username { get; set; }
 
-        public bool CanRead(Uri repositoryUri)
+        public Task<bool> CanRead(Uri repositoryUri)
         {
-            return repositoryUri?.Host.Contains("bitbucket.org", StringComparison.OrdinalIgnoreCase) == true;
+            return Task.FromResult(repositoryUri?.Host.Contains("bitbucket.org", StringComparison.OrdinalIgnoreCase) == true);
         }
 
         public void UpdateCollaborationPlatformSettings(CollaborationPlatformSettings settings)
         {
             settings.Username = Username;
-            UpdateTokenSettings(settings);
+            var envToken = _environmentVariablesProvider.GetEnvironmentVariable("NuKeeper_bitbucket_token");
+            settings.Token = Concat.FirstValue(envToken, settings.Token);
             settings.ForkMode = settings.ForkMode ?? ForkMode.SingleRepositoryOnly;
         }
 
-        private static void UpdateTokenSettings(CollaborationPlatformSettings settings)
-        {
-            var envToken = Environment.GetEnvironmentVariable("NuKeeper_bitbucket_token");
-            settings.Token = Concat.FirstValue(envToken, settings.Token);
-        }
-
-        public RepositorySettings RepositorySettings(Uri repositoryUri)
+        public Task<RepositorySettings> RepositorySettings(Uri repositoryUri, string targetBranch)
         {
             if (repositoryUri == null)
             {
@@ -45,10 +48,10 @@ namespace NuKeeper.BitBucket
 
             if (pathParts.Count != 2)
             {
-                return null;
+                throw new NuKeeperException($"The provided uri was is not in the correct format. Provided {repositoryUri} and format should be https://username_@bitbucket.org/projectname/repositoryname.git");
             }
 
-            if (String.IsNullOrWhiteSpace(repositoryUri.UserInfo))
+            if (string.IsNullOrWhiteSpace(repositoryUri.UserInfo))
             {
                 Username = pathParts[0];
             }
@@ -56,6 +59,7 @@ namespace NuKeeper.BitBucket
             {
                 Username = repositoryUri.UserInfo.Split(':').First();
             }
+
             var repoName = pathParts[1];
             //Trim off any .git extension from repo name
             repoName = repoName.EndsWith(".git", StringComparison.InvariantCultureIgnoreCase) ?
@@ -63,13 +67,13 @@ namespace NuKeeper.BitBucket
                 : repoName;
             var owner = pathParts[0];
 
-            return new RepositorySettings
+            return Task.FromResult(new RepositorySettings
             {
                 ApiUri = new Uri("https://api.bitbucket.org/2.0/"),
                 RepositoryUri = repositoryUri,
                 RepositoryName = repoName,
                 RepositoryOwner = owner
-            };
+            });
         }
     }
 }

@@ -1,9 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.NuGet;
-using NuKeeper.Inspection.RepositoryInspection;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Inspection.NuGetApi
 {
@@ -37,7 +38,7 @@ namespace NuKeeper.Inspection.NuGetApi
                 var matchVersion = latestPackage.Selected().Identity.Version;
 
                 var updatesForThisPackage = packages
-                    .Where(p => p.Id == packageId && p.Version < matchVersion)
+                    .Where(p => p.Id.Equals(packageId,StringComparison.InvariantCultureIgnoreCase) && p.Version < matchVersion)
                     .ToList();
 
                 if (updatesForThisPackage.Count > 0)

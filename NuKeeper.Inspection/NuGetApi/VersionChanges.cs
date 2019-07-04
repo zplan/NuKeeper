@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NuGet.Versioning;
 using NuKeeper.Abstractions.Configuration;
+using NuKeeper.Abstractions.NuGetApi;
 
 namespace NuKeeper.Inspection.NuGetApi
 {
@@ -10,10 +11,10 @@ namespace NuKeeper.Inspection.NuGetApi
     {
         public static PackageLookupResult MakeVersions(
             NuGetVersion current,
-            IEnumerable<PackageSearchMedatadata> candiateVersions,
+            IEnumerable<PackageSearchMetadata> candidateVersions,
             VersionChange allowedChange)
         {
-            var orderedCandidates = candiateVersions
+            var orderedCandidates = candidateVersions
                 .OrderByDescending(p => p.Identity.Version)
                 .ToList();
 
@@ -23,8 +24,8 @@ namespace NuKeeper.Inspection.NuGetApi
             return new PackageLookupResult(allowedChange, major, minor, patch);
         }
 
-        private static PackageSearchMedatadata FirstMatch(
-            IList<PackageSearchMedatadata> candidates,
+        private static PackageSearchMetadata FirstMatch(
+            IList<PackageSearchMetadata> candidates,
             NuGetVersion current,
             VersionChange allowedChange)
         {

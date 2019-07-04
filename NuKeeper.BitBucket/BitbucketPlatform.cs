@@ -60,7 +60,8 @@ namespace NuKeeper.BitBucket
                         name = request.BaseRef
                     }
                 },
-                description = request.Body
+                description = request.Body,
+                close_source_branch = request.DeleteBranchAfterMerge
             };
 
             await _client.CreatePullRequest(req, target.Owner, repo.name);
@@ -116,7 +117,6 @@ namespace NuKeeper.BitBucket
         {
             return new Repository(repo.name, false,
                     new UserPermissions(true, true, true),
-                    new Uri(repo.links.clone.First(x => x.name == "https").href),
                     new Uri(repo.links.html.href),
                     null, false, null);
         }

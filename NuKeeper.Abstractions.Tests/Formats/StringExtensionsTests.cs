@@ -1,5 +1,4 @@
 using System;
-using NuKeeper.Abstractions.Formats;
 using NUnit.Framework;
 
 namespace NuKeeper.Abstractions.Tests.Formats
@@ -32,7 +31,7 @@ namespace NuKeeper.Abstractions.Tests.Formats
         public void ShouldThrowOnNull()
         {
             Assert.Throws<NullReferenceException>(
-                () => ((string) null).Contains("sth", StringComparison.CurrentCulture));
+                () => ((string)null).Contains("sth", StringComparison.CurrentCulture));
         }
     }
 }

@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using LibGit2Sharp;
 using NuKeeper.Abstractions.CollaborationModels;
 using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
+using NuKeeper.Abstractions.Git;
 using NuKeeper.Abstractions.Inspections.Files;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Git;
@@ -35,14 +35,13 @@ namespace NuKeeper.Engine
         }
 
         public async Task<int> Run(RepositorySettings repository,
-            UsernamePasswordCredentials gitCreds,
-            Identity userIdentity,
-            SettingsContainer settings)
+            GitUsernamePasswordCredentials credentials,
+            SettingsContainer settings, User user)
         {
             try
             {
-                var repo = await BuildGitRepositorySpec(repository, gitCreds.Username);
-                if (repo == null)
+                var repositoryData = await BuildGitRepositorySpec(repository, credentials.Username);
+                if (repositoryData == null)
                 {
                     return 0;
                 }
@@ -65,8 +64,12 @@ namespace NuKeeper.Engine
                 {
                     folder = new Folder(_logger, new DirectoryInfo(repository.RemoteInfo.LocalRepositoryUri.AbsolutePath));
                     settings.WorkingFolder = new Folder(_logger, new DirectoryInfo(repository.RemoteInfo.WorkingFolder.AbsolutePath));
-                    repo.DefaultBranch = repository.RemoteInfo.BranchName;
-                    repo.Remote = repository.RemoteInfo.RemoteName;
+                    repositoryData.IsLocalRepo = repository.IsLocalRepo;
+
+                    if (!repositoryData.IsFork) //check if we are on a fork. If not on a fork we set the remote to the locally found remote
+                    {
+                        repositoryData.Remote = repository.RemoteInfo.RemoteName;
+                    }
                 }
                 else
                 {
@@ -74,9 +77,17 @@ namespace NuKeeper.Engine
                     settings.WorkingFolder = folder;
                 }
 
-                var git = new LibGit2SharpDriver(_logger, folder, gitCreds, userIdentity);
+                if (!string.IsNullOrEmpty(repository.RemoteInfo?.BranchName))
+                {
+                    repositoryData.DefaultBranch = repository.RemoteInfo.BranchName;
+                }
 
-                var updatesDone = await _repositoryUpdater.Run(git, repo, settings);
+                repositoryData.IsLocalRepo = repository.IsLocalRepo;
+                IGitDriver git = string.IsNullOrWhiteSpace(settings?.UserSettings?.GitPath) ?
+                    new LibGit2SharpDriver(_logger, folder, credentials, user) as IGitDriver :
+                    new GitCmdDriver(settings.UserSettings.GitPath, _logger, folder, credentials) as IGitDriver;
+
+                var updatesDone = await _repositoryUpdater.Run(git, repositoryData, settings);
 
                 if (!repository.IsLocalRepo)
                 {
@@ -85,7 +96,9 @@ namespace NuKeeper.Engine
 
                 return updatesDone;
             }
+#pragma warning disable CA1031
             catch (Exception ex)
+#pragma warning restore CA1031
             {
                 _logger.Error($"Failed on repo {repository.RepositoryName}", ex);
                 return 1;

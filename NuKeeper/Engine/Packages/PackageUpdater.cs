@@ -1,14 +1,14 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using NuKeeper.Abstractions.CollaborationPlatform;
 using NuKeeper.Abstractions.Configuration;
 using NuKeeper.Abstractions.Logging;
 using NuKeeper.Abstractions.NuGet;
-using NuKeeper.Inspection.RepositoryInspection;
-using NuKeeper.Update;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using NuKeeper.Abstractions.CollaborationModels;
 using NuKeeper.Abstractions.Git;
+using NuKeeper.Abstractions.RepositoryInspection;
+using NuKeeper.Update;
 
 namespace NuKeeper.Engine.Packages
 {
@@ -50,7 +50,9 @@ namespace NuKeeper.Engine.Packages
                     totalCount += updatesMade;
                 }
             }
+#pragma warning disable CA1031
             catch (Exception ex)
+#pragma warning restore CA1031
             {
                 _logger.Error("Updates failed", ex);
             }
@@ -65,28 +67,28 @@ namespace NuKeeper.Engine.Packages
         {
             _logger.Normal(UpdatesLogger.OldVersionsToBeUpdated(updates));
 
-            git.Checkout(repository.DefaultBranch);
+            await git.Checkout(repository.DefaultBranch);
 
             // branch
-            var branchWithChanges = BranchNamer.MakeName(updates);
+            var branchWithChanges = BranchNamer.MakeName(updates, settings.BranchSettings.BranchNamePrefix);
             _logger.Detailed($"Using branch name: '{branchWithChanges}'");
-            git.CheckoutNewBranch(branchWithChanges);
+            await git.CheckoutNewBranch(branchWithChanges);
 
             foreach (var updateSet in updates)
             {
                 await _updateRunner.Update(updateSet, sources);
 
-                var commitMessage = CommitWording.MakeCommitMessage(updateSet);
-                git.Commit(commitMessage);
+                var commitMessage = _collaborationFactory.CommitWorder.MakeCommitMessage(updateSet);
+                await git.Commit(commitMessage);
             }
 
-            git.Push(repository.Remote, branchWithChanges);
+            await git.Push(repository.Remote, branchWithChanges);
 
-            var title = CommitWording.MakePullRequestTitle(updates);
-            var body = CommitWording.MakeCommitDetails(updates);
+            var title = _collaborationFactory.CommitWorder.MakePullRequestTitle(updates);
+            var body = _collaborationFactory.CommitWorder.MakeCommitDetails(updates);
 
             string qualifiedBranch;
-            if (repository.Pull.Owner == repository.Push.Owner)
+            if (!repository.IsFork) //check if we are on a fork, if so qualify the branch name
             {
                 qualifiedBranch = branchWithChanges;
             }
@@ -95,12 +97,12 @@ namespace NuKeeper.Engine.Packages
                 qualifiedBranch = repository.Push.Owner + ":" + branchWithChanges;
             }
 
-            var pullRequestRequest = new PullRequestRequest(qualifiedBranch, title, repository.DefaultBranch) { Body = body };
+            var pullRequestRequest = new PullRequestRequest(qualifiedBranch, title, repository.DefaultBranch, settings.BranchSettings.DeleteBranchAfterMerge) { Body = body };
 
             await _collaborationFactory.CollaborationPlatform.OpenPullRequest(repository.Pull, pullRequestRequest, settings.SourceControlServerSettings.Labels);
 
 
-            git.Checkout(repository.DefaultBranch);
+            await git.Checkout(repository.DefaultBranch);
             return updates.Count;
         }
     }

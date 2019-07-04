@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NuKeeper.Abstractions.Logging;
-using NuKeeper.Inspection.RepositoryInspection;
+using NuKeeper.Abstractions.RepositoryInspection;
 
 namespace NuKeeper.Inspection.Sort
 {
@@ -36,7 +36,7 @@ namespace NuKeeper.Inspection.Sort
 
         private static IReadOnlyCollection<PackageUpdateSet> PackageDeps(PackageUpdateSet set, IReadOnlyCollection<PackageUpdateSet> all)
         {
-            var deps= set.Selected.Dependencies;
+            var deps = set.Selected.Dependencies;
             return all.Where(i => deps.Any(d => d.Id == i.SelectedId)).ToList();
         }
 

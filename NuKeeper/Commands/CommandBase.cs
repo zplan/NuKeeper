@@ -22,7 +22,7 @@ namespace NuKeeper.Commands
             Description = "Allowed version change: Patch, Minor, Major. Defaults to Major.")]
         public VersionChange? AllowedChange { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "up", LongName = "useprerelease",
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "useprerelease",
             Description = "Allowed prerelease: Always, Never, FromPrerelease. Defaults to FromPrerelease.")]
         public UsePrerelease? UsePrerelease { get; set; }
 
@@ -39,7 +39,7 @@ namespace NuKeeper.Commands
             Description = "Exclude updates that do not meet a minimum age, in order to not consume packages immediately after they are released. Examples: 0 = zero, 12h = 12 hours, 3d = 3 days, 2w = two weeks. The default is 7 days.")]
         // ReSharper disable once UnassignedGetOnlyAutoProperty
         // ReSharper disable once MemberCanBePrivate.Global
-        protected string MinimumPackageAge { get; } 
+        protected string MinimumPackageAge { get; }
 
         [Option(CommandOptionType.SingleValue, ShortName = "i", LongName = "include",
             Description = "Only consider packages matching this regex pattern.")]
@@ -53,25 +53,33 @@ namespace NuKeeper.Commands
             Description = "Sets the verbosity level of the command. Allowed values are q[uiet], m[inimal], n[ormal], d[etailed].")]
         public LogLevel? Verbosity { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "ld", LongName = "logdestination",
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "logdestination",
             Description = "Destination for logging.")]
         public LogDestination? LogDestination { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "lf", LongName = "logfile",
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "logfile",
             Description = "Log to the named file.")]
         public string LogFile { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "om", LongName = "outputformat",
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "outputformat",
             Description = "Format for output.")]
         public OutputFormat? OutputFormat { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "od", LongName = "outputdestination",
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "outputdestination",
             Description = "Destination for output.")]
         public OutputDestination? OutputDestination { get; set; }
 
-        [Option(CommandOptionType.SingleValue, ShortName = "of", LongName = "outputfile",
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "outputfile",
             Description = "File name for output.")]
         public string OutputFileName { get; set; }
+
+        [Option(CommandOptionType.SingleValue, ShortName = "", LongName = "branchnameprefix",
+            Description = "Prefix that will be added to created branch name.")]
+        public string BranchNamePrefix { get; set; }
+
+        [Option(CommandOptionType.SingleValue, ShortName = "git", LongName = "gitclipath",
+            Description = "Path to git to use instead of lib2gitsharp implementation")]
+        public string GitCliPath { get; set; }
 
         protected CommandBase(IConfigureLogger logger, IFileSettingsCache fileSettingsCache)
         {
@@ -85,7 +93,7 @@ namespace NuKeeper.Commands
 
             var settings = MakeSettings();
 
-            var validationResult = PopulateSettings(settings);
+            var validationResult = await PopulateSettings(settings);
             if (!validationResult.IsSuccess)
             {
                 var logger = _configureLogger as INuKeeperLogger;
@@ -119,6 +127,8 @@ namespace NuKeeper.Commands
             var allowedChange = Concat.FirstValue(AllowedChange, fileSettings.Change, VersionChange.Major);
             var usePrerelease =
                 Concat.FirstValue(UsePrerelease, fileSettings.UsePrerelease, Abstractions.Configuration.UsePrerelease.FromPrerelease);
+            var branchPrefixName = Concat.FirstValue(BranchNamePrefix, fileSettings.BranchNamePrefix);
+            var gitpath = Concat.FirstValue(GitCliPath, fileSettings.GitCliPath);
 
             var settings = new SettingsContainer
             {
@@ -128,19 +138,24 @@ namespace NuKeeper.Commands
                 {
                     AllowedChange = allowedChange,
                     UsePrerelease = usePrerelease,
-                    NuGetSources = NuGetSources
+                    NuGetSources = NuGetSources,
+                    GitPath = gitpath
+                },
+                BranchSettings = new BranchSettings
+                {
+                    BranchNamePrefix = branchPrefixName
                 }
             };
 
             return settings;
         }
 
-        protected virtual ValidationResult PopulateSettings(SettingsContainer settings)
+        protected virtual async Task<ValidationResult> PopulateSettings(SettingsContainer settings)
         {
             var minPackageAge = ReadMinPackageAge();
             if (!minPackageAge.HasValue)
             {
-                return ValidationResult.Failure($"Min package age '{MinimumPackageAge}' could not be parsed");
+                return await Task.FromResult(ValidationResult.Failure($"Min package age '{MinimumPackageAge}' could not be parsed"));
             }
 
             settings.PackageFilters.MinimumAge = minPackageAge.Value;
@@ -175,7 +190,13 @@ namespace NuKeeper.Commands
                 Concat.FirstValue(OutputFileName, settingsFromFile.OutputFileName,
                     "nukeeper.out");
 
-            return ValidationResult.Success;
+            var branchNamePrefixValid = PopulateBranchNamePrefix(settings);
+            if (!branchNamePrefixValid.IsSuccess)
+            {
+                return branchNamePrefixValid;
+            }
+
+            return await Task.FromResult(ValidationResult.Success);
         }
 
         private TimeSpan? ReadMinPackageAge()
@@ -203,7 +224,7 @@ namespace NuKeeper.Commands
             {
                 settings.PackageFilters.Includes = new Regex(value);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 {
                     return ValidationResult.Failure(
@@ -230,7 +251,7 @@ namespace NuKeeper.Commands
             {
                 settings.PackageFilters.Excludes = new Regex(value);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 {
                     return ValidationResult.Failure(
@@ -238,6 +259,32 @@ namespace NuKeeper.Commands
                 }
             }
 
+            return ValidationResult.Success;
+        }
+
+        private ValidationResult PopulateBranchNamePrefix(
+            SettingsContainer settings)
+        {
+            var settingsFromFile = FileSettingsCache.GetSettings();
+            var value = Concat.FirstValue(BranchNamePrefix, settingsFromFile.BranchNamePrefix);
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                settings.BranchSettings.BranchNamePrefix = null;
+                return ValidationResult.Success;
+            }
+
+            // Validating git branch names: https://stackoverflow.com/a/12093994/1661209
+            // We validate the user defined branch name prefix in combination with a actual branch name that NuKeeper could create.
+            // We want to validate the combination since the prefix doesn't need to fully comply with the rules (E.G. 'nukeeper/' is not allowed soley as a branch name).
+            var validationValue = $"{value}nukeeper-update-FakeItEasy-to-4.9.2";
+            if (!Regex.IsMatch(validationValue, @"^(?!@$|build-|/|.*([/.]\.|//|@\{|\\))[^\000-\037\177 ~^:?*[]+/[^\000-\037\177 ~^:?*[]+(?<!\.lock|[/.])$"))
+            {
+                return ValidationResult.Failure(
+                    $"Provided branch name prefix '{value}' does not comply with branch naming rules.");
+            }
+
+            settings.BranchSettings.BranchNamePrefix = value;
             return ValidationResult.Success;
         }
 
